@@ -2,10 +2,39 @@
 {% block content %}
 <main class="public-section">
   <div class="public-container">
-    <div class="section-title"><span>Preços</span><h1>Planos da Valora Finance</h1><p>Escolha um plano simples para controlar financeiro, vendas, estoque e fechamento diário em pequenos negócios.</p></div>
+    <div class="section-title">
+      <span>Planos</span>
+      <h1>Planos da Valora Finance</h1>
+      <p>Escolha um plano para controlar caixa, vendas, estoque e fechamento diário com trial de 7 dias.</p>
+    </div>
     <div class="pricing-grid">
-      <article class="pricing-card"><h2>Inicial</h2><p>Para quem quer sair da planilha.</p><strong>R$ 39/mês</strong><ul><li>Controle financeiro</li><li>Controle de estoque</li><li>Vendas</li><li>Alertas básicos</li><li>Fechamento diário</li></ul><a class="btn btn-ghost wide" href="{{ url_for('cadastro') }}">Começar grátis</a></article>
-      <article class="pricing-card highlighted"><span>Mais recomendado</span><h2>Profissional</h2><p>Para quem quer mais visão e tomada de decisão.</p><strong>R$ 69/mês</strong><ul><li>Tudo do Inicial</li><li>Relatórios avançados</li><li>Copiloto financeiro</li><li>Histórico de fechamentos</li><li>Recomendações operacionais</li></ul><a class="btn btn-primary wide" href="{{ url_for('cadastro') }}">Começar grátis</a></article>
+      <article class="pricing-card">
+        <h2>Inicial</h2>
+        <p>Para sair da planilha.</p>
+        <strong>R$ 39/mês</strong>
+        <ul>
+          <li>Controle financeiro</li>
+          <li>Controle de estoque</li>
+          <li>Vendas</li>
+          <li>Alertas básicos</li>
+          <li>Fechamento diário</li>
+        </ul>
+        <a class="btn btn-ghost wide" href="{{ url_for('assinar_plano', plan='inicial') }}">Assinar Inicial</a>
+      </article>
+      <article class="pricing-card highlighted">
+        <span>Mais recomendado</span>
+        <h2>Profissional</h2>
+        <p>Para decidir com relatórios e insights.</p>
+        <strong>R$ 69/mês</strong>
+        <ul>
+          <li>Tudo do Inicial</li>
+          <li>Insights inteligentes</li>
+          <li>Relatórios avançados</li>
+          <li>Histórico de fechamentos</li>
+          <li>Recomendações operacionais</li>
+        </ul>
+        <a class="btn btn-primary wide" href="{{ url_for('assinar_plano', plan='profissional') }}">Assinar Profissional</a>
+      </article>
     </div>
   </div>
 </main>

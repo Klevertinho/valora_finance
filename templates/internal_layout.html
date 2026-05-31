@@ -29,8 +29,8 @@
           <strong>{{ settings.company_name or 'Empresa demo' }}</strong>
           <small>{{ settings.business_type or 'Pequeno negócio' }}</small>
         </div>
-        <span class="plan-badge">{{ settings.plan or 'Profissional' }}</span>
-        <span class="active-dot"><i></i>Sistema ativo</span>
+        <span class="plan-badge {{ 'inactive' if settings.plan == 'Sem assinatura' else '' }}">{{ settings.plan or 'Sem assinatura' }}</span>
+        <span class="active-dot {{ 'muted' if settings.plan == 'Sem assinatura' else '' }}"><i></i>{{ 'Escolha um plano' if settings.plan == 'Sem assinatura' else 'Sistema ativo' }}</span>
         <a class="logout-link" href="{{ url_for('logout') }}">Sair da conta</a>
       </div>
     </aside>

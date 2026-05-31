@@ -1435,3 +1435,52 @@ html{scroll-behavior:smooth}.lovable-body{margin:0;background:var(--love-bg);col
   height: 42px;
   object-fit: contain;
 }
+
+/* Critical production fixes: subscription state + dark select dropdowns */
+select,
+select option,
+select optgroup {
+  background-color: #111827 !important;
+  color: #f8fafc !important;
+}
+select option:checked,
+select option:hover {
+  background-color: #2563eb !important;
+  color: #ffffff !important;
+}
+.smart-form select,
+.modal-form select,
+.auth-form select,
+.mini-form select {
+  color-scheme: dark;
+}
+.readonly-plan-box {
+  display: grid;
+  gap: 6px;
+  padding: 14px 16px;
+  border: 1px solid rgba(148,163,184,.16);
+  border-radius: 14px;
+  background: rgba(255,255,255,.035);
+}
+.readonly-plan-box span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+.readonly-plan-box strong {
+  color: var(--text);
+  font-size: 18px;
+  letter-spacing: -.03em;
+}
+.readonly-plan-box small {
+  color: var(--muted-2);
+  font-size: 12px;
+}
+.plan-badge.inactive {
+  background: rgba(148,163,184,.13);
+  color: #cbd5e1;
+}
+.active-dot.muted i {
+  background: #94a3b8;
+  box-shadow: 0 0 0 4px rgba(148,163,184,.12);
+}

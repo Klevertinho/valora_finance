@@ -1,10 +1,11 @@
 import os
 import sqlite3
 import re
+import json
 from functools import wraps
 from io import BytesIO
 from datetime import datetime, timedelta
-from flask import Flask, render_template, request, redirect, url_for, flash, send_file, session, Response
+from flask import Flask, render_template, request, redirect, url_for, flash, send_file, session, Response, jsonify
 
 from werkzeug.security import generate_password_hash, check_password_hash
 
@@ -13,8 +14,286 @@ BRAND_NAME = "Valora Finance"
 BRAND_TAGLINE = "Gestão inteligente"
 
 
+APP_TABLES = {
+    "transactions": "vf_transactions",
+    "items": "vf_items",
+    "closings": "vf_closings",
+    "month_closings": "vf_month_closings",
+    "app_settings": "vf_app_settings",
+    "users": "vf_users",
+    "businesses": "vf_businesses",
+    "business_members": "vf_business_members",
+    "business_settings": "vf_business_settings",
+    "subscriptions": "vf_subscriptions",
+}
+
+
+def is_postgres_dsn(value: str | None) -> bool:
+    return bool(value and value.startswith(("postgres://", "postgresql://")))
+
+
+def normalize_postgres_dsn(dsn: str) -> str:
+    """Render/Supabase Transaction Pooler connection string helper."""
+    dsn = dsn.strip()
+    if dsn.startswith("postgres://"):
+        dsn = "postgresql://" + dsn[len("postgres://"):]
+    if "sslmode=" not in dsn:
+        separator = "&" if "?" in dsn else "?"
+        dsn = f"{dsn}{separator}sslmode=require"
+    return dsn
+
+
+def _map_app_tables(sql: str) -> str:
+    """Use isolated Valora tables in Postgres to avoid conflicts with Supabase Auth/public schema."""
+    for old, new in APP_TABLES.items():
+        sql = re.sub(rf"\b{old}\b", new, sql)
+    return sql
+
+
+def _adapt_postgres_sql(sql: str) -> str:
+    sql = _map_app_tables(sql)
+    return sql.replace("?", "%s")
+
+
+class PostgresCursor:
+    def __init__(self, cursor):
+        self.cursor = cursor
+        self._lastrowid = None
+
+    @property
+    def lastrowid(self):
+        return self._lastrowid
+
+    def execute(self, sql, params=None):
+        params = params or ()
+        query = _adapt_postgres_sql(sql.strip())
+        query_l = query.lower()
+        needs_id = (
+            query_l.startswith("insert into vf_users ")
+            or query_l.startswith("insert into vf_businesses ")
+        ) and " returning " not in query_l
+        if needs_id:
+            query = query.rstrip().rstrip(";") + " RETURNING id"
+        self.cursor.execute(query, params)
+        if needs_id:
+            row = self.cursor.fetchone()
+            self._lastrowid = row["id"] if row else None
+        return self
+
+    def fetchone(self):
+        return self.cursor.fetchone()
+
+    def fetchall(self):
+        return self.cursor.fetchall()
+
+
+class PostgresConnection:
+    def __init__(self, dsn):
+        import psycopg2
+        import psycopg2.extras
+        self.conn = psycopg2.connect(normalize_postgres_dsn(dsn), cursor_factory=psycopg2.extras.RealDictCursor)
+
+    def cursor(self):
+        return PostgresCursor(self.conn.cursor())
+
+    def execute(self, sql, params=None):
+        cur = self.cursor()
+        return cur.execute(sql, params or ())
+
+    def commit(self):
+        self.conn.commit()
+
+    def rollback(self):
+        self.conn.rollback()
+
+    def close(self):
+        self.conn.close()
+
+
+def init_postgres_db(dsn: str) -> None:
+    """Create the production Postgres schema used by the Flask app.
+
+    Tables are prefixed with vf_ to avoid collisions with Supabase's auth/users
+    and any public tables created by earlier experiments.
+    """
+    conn = PostgresConnection(dsn)
+    cur = conn.cursor()
+
+    ddl_statements = [
+        """
+        CREATE TABLE IF NOT EXISTS vf_users (
+            id SERIAL PRIMARY KEY,
+            full_name TEXT NOT NULL,
+            email TEXT NOT NULL UNIQUE,
+            password_hash TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        )
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS vf_businesses (
+            id SERIAL PRIMARY KEY,
+            name TEXT NOT NULL,
+            type TEXT NOT NULL,
+            owner_user_id INTEGER NOT NULL REFERENCES vf_users(id),
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        )
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS vf_business_members (
+            id SERIAL PRIMARY KEY,
+            business_id INTEGER NOT NULL REFERENCES vf_businesses(id) ON DELETE CASCADE,
+            user_id INTEGER NOT NULL REFERENCES vf_users(id) ON DELETE CASCADE,
+            role TEXT NOT NULL DEFAULT 'owner',
+            created_at TEXT NOT NULL,
+            UNIQUE(business_id, user_id)
+        )
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS vf_business_settings (
+            id SERIAL PRIMARY KEY,
+            business_id INTEGER NOT NULL UNIQUE REFERENCES vf_businesses(id) ON DELETE CASCADE,
+            company_name TEXT NOT NULL,
+            business_type TEXT NOT NULL,
+            plan TEXT NOT NULL DEFAULT 'Sem assinatura',
+            visual_preference TEXT NOT NULL DEFAULT 'Graphite Premium',
+            demo_loaded INTEGER NOT NULL DEFAULT 0,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        )
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS vf_transactions (
+            id SERIAL PRIMARY KEY,
+            description TEXT NOT NULL,
+            amount DOUBLE PRECISION NOT NULL,
+            date TEXT NOT NULL,
+            category TEXT NOT NULL,
+            business_category TEXT DEFAULT 'Geral',
+            created_at TEXT,
+            business_id INTEGER DEFAULT 1 REFERENCES vf_businesses(id) ON DELETE CASCADE
+        )
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS vf_items (
+            id SERIAL PRIMARY KEY,
+            name TEXT NOT NULL,
+            quantity INTEGER NOT NULL,
+            price DOUBLE PRECISION DEFAULT 0,
+            category TEXT DEFAULT 'Geral',
+            min_stock INTEGER DEFAULT 1,
+            cost_price DOUBLE PRECISION DEFAULT 0,
+            sale_price DOUBLE PRECISION DEFAULT 0,
+            business_id INTEGER DEFAULT 1 REFERENCES vf_businesses(id) ON DELETE CASCADE
+        )
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS vf_closings (
+            id SERIAL PRIMARY KEY,
+            date TEXT NOT NULL,
+            revenue DOUBLE PRECISION NOT NULL,
+            expenses DOUBLE PRECISION NOT NULL,
+            net DOUBLE PRECISION NOT NULL,
+            products_sold TEXT,
+            critical_products TEXT,
+            recommendations TEXT,
+            created_at TEXT,
+            business_id INTEGER DEFAULT 1 REFERENCES vf_businesses(id) ON DELETE CASCADE
+        )
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS vf_month_closings (
+            id SERIAL PRIMARY KEY,
+            month TEXT NOT NULL,
+            revenue DOUBLE PRECISION NOT NULL,
+            expenses DOUBLE PRECISION NOT NULL,
+            net DOUBLE PRECISION NOT NULL,
+            expense_ratio DOUBLE PRECISION NOT NULL,
+            sales_count INTEGER NOT NULL,
+            products_sold TEXT,
+            top_expense TEXT,
+            critical_products TEXT,
+            insights TEXT,
+            recommendations TEXT,
+            created_at TEXT,
+            business_id INTEGER DEFAULT 1 REFERENCES vf_businesses(id) ON DELETE CASCADE
+        )
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS vf_app_settings (
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL
+        )
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS vf_subscriptions (
+            id SERIAL PRIMARY KEY,
+            business_id INTEGER NOT NULL REFERENCES vf_businesses(id) ON DELETE CASCADE,
+            user_id INTEGER NOT NULL REFERENCES vf_users(id) ON DELETE CASCADE,
+            stripe_customer_id TEXT,
+            stripe_subscription_id TEXT UNIQUE,
+            stripe_price_id TEXT,
+            plan TEXT,
+            status TEXT,
+            current_period_start TEXT,
+            current_period_end TEXT,
+            trial_start TEXT,
+            trial_end TEXT,
+            cancel_at_period_end INTEGER DEFAULT 0,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        )
+        """,
+        "CREATE INDEX IF NOT EXISTS idx_vf_transactions_business ON vf_transactions(business_id)",
+        "CREATE INDEX IF NOT EXISTS idx_vf_items_business ON vf_items(business_id)",
+        "CREATE INDEX IF NOT EXISTS idx_vf_subscriptions_business ON vf_subscriptions(business_id)",
+    ]
+    for ddl in ddl_statements:
+        cur.execute(ddl)
+
+    now = datetime.now().isoformat(timespec="minutes")
+    cur.execute(
+        """
+        UPDATE vf_business_settings
+        SET plan = 'Sem assinatura'
+        WHERE plan = 'Profissional'
+          AND business_id NOT IN (
+            SELECT business_id FROM vf_subscriptions WHERE status IN ('active', 'trialing')
+          )
+        """
+    )
+
+    demo = cur.execute("SELECT id FROM vf_users WHERE email = %s", ("demo@valora.local",)).fetchone()
+    if not demo:
+        cur.execute(
+            "INSERT INTO vf_users (full_name, email, password_hash, created_at, updated_at) VALUES (%s, %s, %s, %s, %s)",
+            ("Usuário Demo", "demo@valora.local", generate_password_hash("demo1234"), now, now),
+        )
+        user_id = cur.lastrowid
+        cur.execute(
+            "INSERT INTO vf_businesses (name, type, owner_user_id, created_at, updated_at) VALUES (%s, %s, %s, %s, %s)",
+            ("Empresa demo", "Salão de beleza", user_id, now, now),
+        )
+        business_id = cur.lastrowid
+        cur.execute(
+            "INSERT INTO vf_business_members (business_id, user_id, role, created_at) VALUES (%s, %s, %s, %s)",
+            (business_id, user_id, "owner", now),
+        )
+        cur.execute(
+            "INSERT INTO vf_business_settings (business_id, company_name, business_type, plan, visual_preference, demo_loaded, created_at, updated_at) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
+            (business_id, "Empresa demo", "Salão de beleza", "Sem assinatura", "Graphite Premium", 0, now, now),
+        )
+
+    conn.commit()
+    conn.close()
+
+
 def init_db(db_path: str) -> None:
-    """Create and migrate the local SQLite schema."""
+    """Create and migrate SQLite locally or Postgres in production when DATABASE_URL is set."""
+    if is_postgres_dsn(db_path):
+        init_postgres_db(db_path)
+        return
     conn = sqlite3.connect(db_path)
     cur = conn.cursor()
 
@@ -160,7 +439,7 @@ def init_db(db_path: str) -> None:
             business_id INTEGER NOT NULL UNIQUE,
             company_name TEXT NOT NULL,
             business_type TEXT NOT NULL,
-            plan TEXT NOT NULL DEFAULT 'Profissional',
+            plan TEXT NOT NULL DEFAULT 'Sem assinatura',
             visual_preference TEXT NOT NULL DEFAULT 'Graphite Premium',
             demo_loaded INTEGER NOT NULL DEFAULT 0,
             created_at TEXT NOT NULL,
@@ -169,6 +448,41 @@ def init_db(db_path: str) -> None:
         )
         """
     )
+
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS subscriptions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            business_id INTEGER NOT NULL,
+            user_id INTEGER NOT NULL,
+            stripe_customer_id TEXT,
+            stripe_subscription_id TEXT UNIQUE,
+            stripe_price_id TEXT,
+            plan TEXT,
+            status TEXT,
+            current_period_start TEXT,
+            current_period_end TEXT,
+            trial_start TEXT,
+            trial_end TEXT,
+            cancel_at_period_end INTEGER DEFAULT 0,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            FOREIGN KEY(business_id) REFERENCES businesses(id) ON DELETE CASCADE,
+            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+        """
+    )
+
+    # Corrige contas antigas que nasceram como "Profissional" sem assinatura real.
+    # Plano comercial passa a ser derivado da tabela subscriptions/webhook Stripe.
+    cur.execute("""
+        UPDATE business_settings
+        SET plan = 'Sem assinatura'
+        WHERE plan = 'Profissional'
+          AND business_id NOT IN (
+            SELECT business_id FROM subscriptions WHERE status IN ('active', 'trialing')
+          )
+    """)
 
     def ensure_column(table, column, definition):
         cur.execute(f"PRAGMA table_info({table})")
@@ -199,7 +513,7 @@ def init_db(db_path: str) -> None:
         )
         cur.execute(
             "INSERT INTO business_settings (business_id, company_name, business_type, plan, visual_preference, demo_loaded, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-            (business_id, "Empresa demo", "Salão de beleza", "Profissional", "Graphite Premium", 0, now, now),
+            (business_id, "Empresa demo", "Salão de beleza", "Sem assinatura", "Graphite Premium", 0, now, now),
         )
 
     conn.commit()
@@ -207,6 +521,8 @@ def init_db(db_path: str) -> None:
 
 
 def get_db_connection(db_path: str):
+    if is_postgres_dsn(db_path):
+        return PostgresConnection(db_path)
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     return conn
@@ -215,13 +531,13 @@ def get_db_connection(db_path: str):
 def create_app():
     app = Flask(__name__)
     app.secret_key = os.environ.get("FLASK_SECRET_KEY", "valora-finance-local-dev-secret")
-    db_path = os.environ.get("VALORA_DATABASE_PATH") or os.path.join(os.path.dirname(__file__), "data.db")
+    db_path = os.environ.get("DATABASE_URL") or os.environ.get("VALORA_DATABASE_PATH") or os.path.join(os.path.dirname(__file__), "data.db")
     init_db(db_path)
 
     default_settings = {
         "company_name": "Empresa demo",
         "business_type": "Salão de beleza",
-        "plan": "Profissional",
+        "plan": "Sem assinatura",
         "visual_preference": "Graphite Premium",
     }
 
@@ -287,7 +603,7 @@ def create_app():
                 business_id,
                 data.get("company_name", "Empresa demo"),
                 data.get("business_type", "Outro"),
-                data.get("plan", "Profissional"),
+                data.get("plan", "Sem assinatura"),
                 data.get("visual_preference", "Graphite Premium"),
                 1 if data.get("demo_loaded") else 0,
                 now,
@@ -298,9 +614,20 @@ def create_app():
         conn.close()
 
     public_endpoints = {
-        "landing", "login", "cadastro", "recuperar_senha", "precos", "termos", "privacidade", "robots_txt", "sitemap_xml", "static"
+        "landing", "login", "cadastro", "recuperar_senha", "precos", "termos", "privacidade",
+        "robots_txt", "sitemap_xml", "healthz", "stripe_webhook", "assinar_plano", "static"
     }
     auth_endpoints = {"login", "cadastro"}
+
+    def _safe_next_url(value):
+        """Allow only internal redirects."""
+        if value and isinstance(value, str) and value.startswith("/") and not value.startswith("//"):
+            return value
+        return None
+
+    def _valid_plan(value):
+        plan = (value or "").lower()
+        return plan if plan in {"inicial", "profissional"} else ""
 
     @app.before_request
     def protect_routes():
@@ -309,8 +636,15 @@ def create_app():
             return None
         logged = bool(session.get("user_id"))
         if endpoint not in public_endpoints and not logged:
-            return redirect(url_for("login", next=request.path))
+            next_url = request.full_path if request.query_string else request.path
+            return redirect(url_for("login", next=next_url))
         if endpoint in auth_endpoints and logged:
+            plan = _valid_plan(request.args.get("plan") or session.get("pending_plan"))
+            next_url = _safe_next_url(request.args.get("next"))
+            if plan:
+                return redirect(url_for("assinar_plano", plan=plan))
+            if next_url:
+                return redirect(next_url)
             return redirect(url_for("dashboard"))
         return None
 
@@ -333,9 +667,33 @@ def create_app():
 
     @app.context_processor
     def inject_globals():
+        settings_payload = load_settings()
+        subscription = None
+        subscription_view = {
+            "plan": None,
+            "status": None,
+            "status_label": "Sem assinatura",
+            "is_active": False,
+            "is_trialing": False,
+            "has_access": False,
+            "trial_ends_at": None,
+            "current_period_end": None,
+        }
+        try:
+            if current_user():
+                subscription = get_subscription_for_business()
+                subscription_view = subscription_access(subscription)
+                if subscription_view.get("has_access") and subscription_view.get("plan"):
+                    settings_payload["plan"] = plan_label(subscription_view.get("plan"))
+                else:
+                    settings_payload["plan"] = "Sem assinatura"
+        except Exception:
+            settings_payload["plan"] = settings_payload.get("plan") or "Sem assinatura"
         return {
-            "settings": load_settings(),
+            "settings": settings_payload,
             "current_user": current_user(),
+            "subscription_global": subscription,
+            "subscription_view_global": subscription_view,
             "brand_name": BRAND_NAME,
             "brand_tagline": BRAND_TAGLINE,
             "today_iso": datetime.today().date().isoformat(),
@@ -726,6 +1084,158 @@ def create_app():
             or "https://valorafinance.com.br"
         ).rstrip("/")
 
+    def get_app_url() -> str:
+        """Return the production application URL used in Stripe redirects and SEO."""
+        return (
+            os.getenv("VALORA_APP_URL")
+            or os.getenv("APP_URL")
+            or os.getenv("SITE_URL")
+            or os.getenv("VALORA_SITE_URL")
+            or os.getenv("NEXT_PUBLIC_APP_URL")
+            or os.getenv("NEXT_PUBLIC_SITE_URL")
+            or request.host_url.rstrip("/")
+        ).rstrip("/")
+
+    def stripe_price_map():
+        return {
+            "inicial": os.getenv("STRIPE_PRICE_INICIAL_MONTHLY"),
+            "profissional": os.getenv("STRIPE_PRICE_PROFISSIONAL_MONTHLY"),
+        }
+
+    def plan_label(plan):
+        return {"inicial": "Inicial", "profissional": "Profissional"}.get(plan, "Sem assinatura")
+
+    def get_stripe_client():
+        secret_key = os.getenv("STRIPE_SECRET_KEY")
+        if not secret_key:
+            return None
+        try:
+            import stripe
+            stripe.api_key = secret_key
+            return stripe
+        except Exception:
+            return None
+
+    def timestamp_to_iso(value):
+        if not value:
+            return None
+        try:
+            return datetime.fromtimestamp(int(value)).isoformat(timespec="seconds")
+        except Exception:
+            return None
+
+    def upsert_subscription(payload):
+        now = datetime.now().isoformat(timespec="minutes")
+        conn = get_db_connection(db_path)
+        existing = None
+        if payload.get("stripe_subscription_id"):
+            existing = conn.execute(
+                "SELECT id FROM subscriptions WHERE stripe_subscription_id = ?",
+                (payload.get("stripe_subscription_id"),),
+            ).fetchone()
+        if existing:
+            conn.execute(
+                """
+                UPDATE subscriptions
+                SET stripe_customer_id = ?, stripe_price_id = ?, plan = ?, status = ?,
+                    current_period_start = ?, current_period_end = ?, trial_start = ?, trial_end = ?,
+                    cancel_at_period_end = ?, updated_at = ?
+                WHERE id = ?
+                """,
+                (
+                    payload.get("stripe_customer_id"), payload.get("stripe_price_id"), payload.get("plan"),
+                    payload.get("status"), payload.get("current_period_start"), payload.get("current_period_end"),
+                    payload.get("trial_start"), payload.get("trial_end"), 1 if payload.get("cancel_at_period_end") else 0,
+                    now, existing["id"],
+                ),
+            )
+        else:
+            conn.execute(
+                """
+                INSERT INTO subscriptions (
+                    business_id, user_id, stripe_customer_id, stripe_subscription_id, stripe_price_id,
+                    plan, status, current_period_start, current_period_end, trial_start, trial_end,
+                    cancel_at_period_end, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    payload.get("business_id"), payload.get("user_id"), payload.get("stripe_customer_id"),
+                    payload.get("stripe_subscription_id"), payload.get("stripe_price_id"), payload.get("plan"),
+                    payload.get("status"), payload.get("current_period_start"), payload.get("current_period_end"),
+                    payload.get("trial_start"), payload.get("trial_end"), 1 if payload.get("cancel_at_period_end") else 0,
+                    now, now,
+                ),
+            )
+        if payload.get("business_id") and payload.get("plan"):
+            conn.execute(
+                "UPDATE business_settings SET plan = ?, updated_at = ? WHERE business_id = ?",
+                (plan_label(payload.get("plan")), now, payload.get("business_id")),
+            )
+        conn.commit()
+        conn.close()
+
+    def get_subscription_for_business(business_id=None):
+        business_id = business_id or current_business_id()
+        if not business_id:
+            return None
+        conn = get_db_connection(db_path)
+        row = conn.execute(
+            "SELECT * FROM subscriptions WHERE business_id = ? ORDER BY updated_at DESC, id DESC LIMIT 1",
+            (business_id,),
+        ).fetchone()
+        conn.close()
+        return row
+
+    def subscription_status_label(status):
+        return {
+            "active": "Ativo",
+            "trialing": "Em teste",
+            "past_due": "Pagamento pendente",
+            "canceled": "Cancelado",
+            "incomplete": "Incompleto",
+            "unpaid": "Não pago",
+        }.get(status or "", "Sem assinatura")
+
+    def subscription_access(subscription):
+        status = subscription["status"] if subscription else None
+        return {
+            "plan": subscription["plan"] if subscription else None,
+            "status": status,
+            "status_label": subscription_status_label(status),
+            "is_active": status == "active",
+            "is_trialing": status == "trialing",
+            "has_access": status in {"active", "trialing"},
+            "trial_ends_at": subscription["trial_end"] if subscription else None,
+            "current_period_end": subscription["current_period_end"] if subscription else None,
+        }
+
+    def create_checkout_session_for_plan(plan):
+        plan = (plan or "").lower()
+        price_id = stripe_price_map().get(plan)
+        if plan not in {"inicial", "profissional"} or not price_id:
+            raise ValueError("Plano inválido ou STRIPE_PRICE do plano ausente.")
+        stripe = get_stripe_client()
+        if not stripe:
+            raise RuntimeError("Stripe não configurado. Verifique STRIPE_SECRET_KEY e a dependência stripe.")
+        user = current_user()
+        business_id = current_business_id()
+        if not user or not business_id:
+            raise PermissionError("Usuário não autenticado.")
+        app_url = get_app_url()
+        session_obj = stripe.checkout.Session.create(
+            mode="subscription",
+            customer_email=user["email"],
+            line_items=[{"price": price_id, "quantity": 1}],
+            subscription_data={
+                "trial_period_days": int(os.getenv("STRIPE_TRIAL_DAYS", "7")),
+                "metadata": {"user_id": str(user["id"]), "business_id": str(business_id), "plan": plan},
+            },
+            metadata={"user_id": str(user["id"]), "business_id": str(business_id), "plan": plan},
+            success_url=f"{app_url}/dashboard?checkout=success",
+            cancel_url=f"{app_url}/precos?checkout=cancelled",
+        )
+        return session_obj
+
     @app.context_processor
     def inject_public_site_url():
         return {"site_url": public_site_url()}
@@ -741,6 +1251,8 @@ def create_app():
 
     @app.route("/precos")
     def precos():
+        if request.args.get("checkout") == "cancelled":
+            flash("Checkout cancelado. Você pode escolher um plano quando quiser.", "info")
         return render_template(
             "precos.html",
             title="Preços | Valora Finance",
@@ -800,8 +1312,19 @@ Sitemap: {public_site_url()}/sitemap.xml
         xml = f'<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">{items}</urlset>'
         return Response(xml, mimetype="application/xml")
 
+    @app.route("/healthz")
+    def healthz():
+        return jsonify({
+            "ok": True,
+            "database": "postgres" if is_postgres_dsn(db_path) else "sqlite",
+            "stripe_configured": bool(os.getenv("STRIPE_SECRET_KEY")),
+            "app_url": get_app_url(),
+        })
+
     @app.route("/login", methods=["GET", "POST"])
     def login():
+        selected_plan = _valid_plan(request.form.get("plan") or request.args.get("plan") or session.get("pending_plan"))
+        next_url = _safe_next_url(request.args.get("next"))
         if request.method == "POST":
             email = request.form.get("email", "").strip().lower()
             password = request.form.get("password", "")
@@ -810,16 +1333,20 @@ Sitemap: {public_site_url()}/sitemap.xml
             if not user or not check_password_hash(user["password_hash"], password):
                 conn.close()
                 flash("Email ou senha inválidos.", "error")
-                return render_template("login.html", title="Entrar | Valora Finance", email=email)
+                return render_template("login.html", title="Entrar | Valora Finance", email=email, selected_plan=selected_plan, next_url=next_url)
             membership = conn.execute("SELECT business_id FROM business_members WHERE user_id = ? ORDER BY id LIMIT 1", (user["id"],)).fetchone()
-            conn.close()
+            pending_plan = selected_plan or _valid_plan(session.get("pending_plan"))
             session.clear()
             session["user_id"] = user["id"]
             if membership:
                 session["business_id"] = membership["business_id"]
             flash("Login realizado.", "success")
-            return redirect(request.args.get("next") or url_for("dashboard"))
-        return render_template("login.html", title="Entrar | Valora Finance", email="demo@valora.local")
+            if pending_plan:
+                return redirect(url_for("assinar_plano", plan=pending_plan))
+            if next_url:
+                return redirect(next_url)
+            return redirect(url_for("dashboard"))
+        return render_template("login.html", title="Entrar | Valora Finance", email="demo@valora.local", selected_plan=selected_plan, next_url=next_url)
 
     @app.route("/cadastro", methods=["GET", "POST"])
     def cadastro():
@@ -831,21 +1358,24 @@ Sitemap: {public_site_url()}/sitemap.xml
             business_name = request.form.get("business_name", "").strip()
             business_type = request.form.get("business_type", "")
             load_demo = request.form.get("load_demo") == "1"
+            selected_plan = (request.form.get("plan") or "").lower()
+            if selected_plan not in {"", "inicial", "profissional"}:
+                selected_plan = ""
             if not full_name or not business_name or business_type not in business_types:
                 flash("Preencha nome, empresa e tipo de negócio.", "error")
-                return render_template("cadastro.html", title="Criar conta | Valora Finance", business_types=business_types, form=request.form)
+                return render_template("cadastro.html", title="Criar conta | Valora Finance", business_types=business_types, form=request.form, selected_plan=selected_plan)
             if not re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", email):
                 flash("Informe um email válido.", "error")
-                return render_template("cadastro.html", title="Criar conta | Valora Finance", business_types=business_types, form=request.form)
+                return render_template("cadastro.html", title="Criar conta | Valora Finance", business_types=business_types, form=request.form, selected_plan=selected_plan)
             if len(password) < 6:
                 flash("A senha precisa ter pelo menos 6 caracteres.", "error")
-                return render_template("cadastro.html", title="Criar conta | Valora Finance", business_types=business_types, form=request.form)
+                return render_template("cadastro.html", title="Criar conta | Valora Finance", business_types=business_types, form=request.form, selected_plan=selected_plan)
             conn = get_db_connection(db_path)
             exists = conn.execute("SELECT id FROM users WHERE email = ?", (email,)).fetchone()
             if exists:
                 conn.close()
                 flash("Este email já está cadastrado.", "error")
-                return render_template("cadastro.html", title="Criar conta | Valora Finance", business_types=business_types, form=request.form)
+                return render_template("cadastro.html", title="Criar conta | Valora Finance", business_types=business_types, form=request.form, selected_plan=selected_plan)
             now = datetime.now().isoformat(timespec="minutes")
             cur = conn.cursor()
             cur.execute("INSERT INTO users (full_name, email, password_hash, created_at, updated_at) VALUES (?, ?, ?, ?, ?)", (full_name, email, generate_password_hash(password), now, now))
@@ -853,7 +1383,7 @@ Sitemap: {public_site_url()}/sitemap.xml
             cur.execute("INSERT INTO businesses (name, type, owner_user_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?)", (business_name, business_type, user_id, now, now))
             business_id = cur.lastrowid
             cur.execute("INSERT INTO business_members (business_id, user_id, role, created_at) VALUES (?, ?, ?, ?)", (business_id, user_id, "owner", now))
-            cur.execute("INSERT INTO business_settings (business_id, company_name, business_type, plan, visual_preference, demo_loaded, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", (business_id, business_name, business_type, "Profissional", "Graphite Premium", 0, now, now))
+            cur.execute("INSERT INTO business_settings (business_id, company_name, business_type, plan, visual_preference, demo_loaded, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", (business_id, business_name, business_type, "Sem assinatura", "Graphite Premium", 0, now, now))
             conn.commit()
             conn.close()
             session.clear()
@@ -862,8 +1392,13 @@ Sitemap: {public_site_url()}/sitemap.xml
             if load_demo:
                 seed_demo_data()
             flash("Conta criada.", "success")
+            if selected_plan:
+                return redirect(url_for("assinar_plano", plan=selected_plan))
             return redirect(url_for("dashboard"))
-        return render_template("cadastro.html", title="Criar conta | Valora Finance", business_types=business_types, form={}, load_demo=request.args.get("demo") == "true")
+        selected_plan = (request.args.get("plan") or "").lower()
+        if selected_plan not in {"inicial", "profissional"}:
+            selected_plan = ""
+        return render_template("cadastro.html", title="Criar conta | Valora Finance", business_types=business_types, form={}, load_demo=request.args.get("demo") == "true", selected_plan=selected_plan)
 
     @app.route("/recuperar-senha", methods=["GET", "POST"])
     def recuperar_senha():
@@ -872,6 +1407,113 @@ Sitemap: {public_site_url()}/sitemap.xml
             flash("Se o email existir, enviaremos as instruções de recuperação.", "success")
             return render_template("recuperar_senha.html", title="Recuperar senha | Valora Finance", sent=True, email=email)
         return render_template("recuperar_senha.html", title="Recuperar senha | Valora Finance", sent=False)
+
+    @app.route("/assinar/<plan>")
+    def assinar_plano(plan):
+        """Public-safe entrypoint for pricing CTAs."""
+        plan = (plan or "").lower()
+        if plan not in {"inicial", "profissional"}:
+            flash("Plano inválido.", "error")
+            return redirect(url_for("precos"))
+        if not session.get("user_id"):
+            session["pending_plan"] = plan
+            flash("Entre ou crie sua conta para concluir a assinatura.", "info")
+            return redirect(url_for("login", plan=plan, next=url_for("assinar_plano", plan=plan)))
+        try:
+            checkout_session = create_checkout_session_for_plan(plan)
+            return redirect(checkout_session.url)
+        except Exception as exc:
+            flash(f"Checkout indisponível: {exc}", "error")
+            return redirect(url_for("precos"))
+
+    @app.route("/api/stripe/create-checkout-session", methods=["POST"])
+    def create_checkout_session_api():
+        plan = (request.form.get("plan") or (request.json or {}).get("plan") if request.is_json else request.form.get("plan") or "").lower()
+        try:
+            checkout_session = create_checkout_session_for_plan(plan)
+            return jsonify({"url": checkout_session.url})
+        except PermissionError:
+            return jsonify({"error": "Faça login para assinar."}), 401
+        except Exception as exc:
+            return jsonify({"error": str(exc)}), 400
+
+    @app.route("/billing/portal", methods=["POST", "GET"])
+    def billing_portal():
+        subscription = get_subscription_for_business()
+        if not subscription or not subscription["stripe_customer_id"]:
+            flash("Nenhuma assinatura ativa encontrada. Escolha um plano para começar.", "info")
+            return redirect(url_for("precos"))
+        stripe = get_stripe_client()
+        if not stripe:
+            flash("Portal de assinatura indisponível. Configure STRIPE_SECRET_KEY.", "error")
+            return redirect(url_for("configuracoes"))
+        portal = stripe.billing_portal.Session.create(
+            customer=subscription["stripe_customer_id"],
+            return_url=f"{get_app_url()}/configuracoes?billing=return",
+        )
+        return redirect(portal.url)
+
+    @app.route("/api/stripe/webhook", methods=["POST"])
+    def stripe_webhook():
+        stripe = get_stripe_client()
+        webhook_secret = os.getenv("STRIPE_WEBHOOK_SECRET")
+        if not stripe or not webhook_secret:
+            return jsonify({"error": "Stripe webhook não configurado."}), 400
+        payload = request.get_data(as_text=False)
+        signature = request.headers.get("stripe-signature")
+        if not signature:
+            return jsonify({"error": "Missing Stripe signature."}), 400
+        try:
+            event = stripe.Webhook.construct_event(payload, signature, webhook_secret)
+        except Exception as exc:
+            return jsonify({"error": f"Invalid signature: {exc}"}), 400
+
+        try:
+            if event["type"] == "checkout.session.completed":
+                checkout = event["data"]["object"]
+                metadata = checkout.get("metadata") or {}
+                subscription_id = checkout.get("subscription")
+                if subscription_id:
+                    sub = stripe.Subscription.retrieve(subscription_id)
+                    item = sub["items"]["data"][0] if sub["items"]["data"] else {}
+                    price = item.get("price") or {}
+                    upsert_subscription({
+                        "business_id": int(metadata.get("business_id")),
+                        "user_id": int(metadata.get("user_id")),
+                        "stripe_customer_id": checkout.get("customer"),
+                        "stripe_subscription_id": sub.get("id"),
+                        "stripe_price_id": price.get("id"),
+                        "plan": metadata.get("plan"),
+                        "status": sub.get("status"),
+                        "current_period_start": timestamp_to_iso(sub.get("current_period_start")),
+                        "current_period_end": timestamp_to_iso(sub.get("current_period_end")),
+                        "trial_start": timestamp_to_iso(sub.get("trial_start")),
+                        "trial_end": timestamp_to_iso(sub.get("trial_end")),
+                        "cancel_at_period_end": sub.get("cancel_at_period_end"),
+                    })
+            elif event["type"] in {"customer.subscription.created", "customer.subscription.updated", "customer.subscription.deleted"}:
+                sub = event["data"]["object"]
+                metadata = sub.get("metadata") or {}
+                item = sub["items"]["data"][0] if sub.get("items") and sub["items"]["data"] else {}
+                price = item.get("price") or {}
+                if metadata.get("user_id") and metadata.get("business_id"):
+                    upsert_subscription({
+                        "business_id": int(metadata.get("business_id")),
+                        "user_id": int(metadata.get("user_id")),
+                        "stripe_customer_id": sub.get("customer"),
+                        "stripe_subscription_id": sub.get("id"),
+                        "stripe_price_id": price.get("id"),
+                        "plan": metadata.get("plan"),
+                        "status": sub.get("status"),
+                        "current_period_start": timestamp_to_iso(sub.get("current_period_start")),
+                        "current_period_end": timestamp_to_iso(sub.get("current_period_end")),
+                        "trial_start": timestamp_to_iso(sub.get("trial_start")),
+                        "trial_end": timestamp_to_iso(sub.get("trial_end")),
+                        "cancel_at_period_end": sub.get("cancel_at_period_end"),
+                    })
+            return jsonify({"received": True})
+        except Exception as exc:
+            return jsonify({"error": f"Webhook handler failed: {exc}"}), 500
 
     @app.route("/logout")
     def logout():
@@ -885,6 +1527,8 @@ Sitemap: {public_site_url()}/sitemap.xml
 
     @app.route("/dashboard")
     def dashboard():
+        if request.args.get("checkout") == "success":
+            flash("Assinatura iniciada. O status será atualizado após confirmação do Stripe.", "success")
         ctx = dashboard_context()
         dashboard_actions = [
             {"label": "Nova venda", "url": "#nova-venda", "class": "primary"},
@@ -1346,7 +1990,8 @@ Sitemap: {public_site_url()}/sitemap.xml
                 settings_payload = load_settings()
                 settings_payload["company_name"] = request.form.get("company_name", "Empresa demo").strip() or "Empresa demo"
                 settings_payload["business_type"] = request.form.get("business_type", "Outro")
-                settings_payload["plan"] = request.form.get("plan", "Profissional")
+                # Plano não é mais editável manualmente. Ele vem da assinatura Stripe.
+                settings_payload["plan"] = load_settings().get("plan", "Sem assinatura")
                 settings_payload["visual_preference"] = request.form.get("visual_preference", "Graphite Premium")
                 save_settings(settings_payload)
                 flash("Configurações salvas.", "success")
@@ -1364,10 +2009,13 @@ Sitemap: {public_site_url()}/sitemap.xml
                 seed_demo_data()
             return redirect(url_for("configuracoes"))
         ctx = dashboard_context()
+        subscription = get_subscription_for_business()
         ctx.update({
             "page_title": "Configurações",
-            "page_subtitle": "Empresa, plano e demo.",
+            "page_subtitle": "Empresa, plano e assinatura.",
             "page_actions": [],
+            "subscription": subscription,
+            "subscription_view": subscription_access(subscription),
         })
         return render_template("settings.html", **ctx)
 
@@ -1397,5 +2045,10 @@ Sitemap: {public_site_url()}/sitemap.xml
     return app
 
 
+# Compatível com `gunicorn app:app` e também com `gunicorn "app:create_app()"`.
+app = create_app()
+
+
 if __name__ == "__main__":
-    create_app().run(debug=True, host="0.0.0.0", port=8000)
+    port = int(os.environ.get("PORT", 8000))
+    app.run(debug=os.environ.get("FLASK_DEBUG") == "1", host="0.0.0.0", port=port)
