@@ -264,26 +264,27 @@ def init_postgres_db(dsn: str) -> None:
         """
     )
 
-    demo = cur.execute("SELECT id FROM vf_users WHERE email = %s", ("demo@valora.local",)).fetchone()
-    if not demo:
-        cur.execute(
-            "INSERT INTO vf_users (full_name, email, password_hash, created_at, updated_at) VALUES (%s, %s, %s, %s, %s)",
-            ("Usuário Demo", "demo@valora.local", generate_password_hash("demo1234"), now, now),
-        )
-        user_id = cur.lastrowid
-        cur.execute(
-            "INSERT INTO vf_businesses (name, type, owner_user_id, created_at, updated_at) VALUES (%s, %s, %s, %s, %s)",
-            ("Empresa demo", "Salão de beleza", user_id, now, now),
-        )
-        business_id = cur.lastrowid
-        cur.execute(
-            "INSERT INTO vf_business_members (business_id, user_id, role, created_at) VALUES (%s, %s, %s, %s)",
-            (business_id, user_id, "owner", now),
-        )
-        cur.execute(
-            "INSERT INTO vf_business_settings (business_id, company_name, business_type, plan, visual_preference, demo_loaded, created_at, updated_at) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
-            (business_id, "Empresa demo", "Salão de beleza", "Sem assinatura", "Graphite Premium", 0, now, now),
-        )
+    if os.environ.get("ENABLE_DEMO_ACCOUNT", "0") == "1":
+        demo = cur.execute("SELECT id FROM vf_users WHERE email = %s", ("demo@valora.local",)).fetchone()
+        if not demo:
+            cur.execute(
+                "INSERT INTO vf_users (full_name, email, password_hash, created_at, updated_at) VALUES (%s, %s, %s, %s, %s)",
+                ("Usuário Demo", "demo@valora.local", generate_password_hash("demo1234"), now, now),
+            )
+            user_id = cur.lastrowid
+            cur.execute(
+                "INSERT INTO vf_businesses (name, type, owner_user_id, created_at, updated_at) VALUES (%s, %s, %s, %s, %s)",
+                ("Empresa demo", "Salão de beleza", user_id, now, now),
+            )
+            business_id = cur.lastrowid
+            cur.execute(
+                "INSERT INTO vf_business_members (business_id, user_id, role, created_at) VALUES (%s, %s, %s, %s)",
+                (business_id, user_id, "owner", now),
+            )
+            cur.execute(
+                "INSERT INTO vf_business_settings (business_id, company_name, business_type, plan, visual_preference, demo_loaded, created_at, updated_at) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
+                (business_id, "Empresa demo", "Salão de beleza", "Sem assinatura", "Graphite Premium", 0, now, now),
+            )
 
     conn.commit()
     conn.close()
@@ -531,7 +532,11 @@ def get_db_connection(db_path: str):
 def create_app():
     app = Flask(__name__)
     app.secret_key = os.environ.get("FLASK_SECRET_KEY", "valora-finance-local-dev-secret")
-    db_path = os.environ.get("DATABASE_URL") or os.environ.get("VALORA_DATABASE_PATH") or os.path.join(os.path.dirname(__file__), "data.db")
+    database_url = os.environ.get("DATABASE_URL")
+    running_on_render = bool(os.environ.get("RENDER") or os.environ.get("RENDER_SERVICE_ID") or os.environ.get("PORT"))
+    if running_on_render and not database_url:
+        raise RuntimeError("DATABASE_URL ausente em produção. Configure a connection string do Neon/Postgres no Render para evitar perda de contas.")
+    db_path = database_url or os.environ.get("VALORA_DATABASE_PATH") or os.path.join(os.path.dirname(__file__), "data.db")
     init_db(db_path)
 
     default_settings = {
@@ -1314,9 +1319,17 @@ Sitemap: {public_site_url()}/sitemap.xml
 
     @app.route("/healthz")
     def healthz():
+        conn = get_db_connection(db_path)
+        try:
+            users_count = conn.execute("SELECT COUNT(*) AS total FROM users").fetchone()["total"]
+            subscriptions_count = conn.execute("SELECT COUNT(*) AS total FROM subscriptions").fetchone()["total"]
+        finally:
+            conn.close()
         return jsonify({
             "ok": True,
             "database": "postgres" if is_postgres_dsn(db_path) else "sqlite",
+            "users_count": users_count,
+            "subscriptions_count": subscriptions_count,
             "stripe_configured": bool(os.getenv("STRIPE_SECRET_KEY")),
             "app_url": get_app_url(),
         })
@@ -1346,7 +1359,7 @@ Sitemap: {public_site_url()}/sitemap.xml
             if next_url:
                 return redirect(next_url)
             return redirect(url_for("dashboard"))
-        return render_template("login.html", title="Entrar | Valora Finance", email="demo@valora.local", selected_plan=selected_plan, next_url=next_url)
+        return render_template("login.html", title="Entrar | Valora Finance", email="", selected_plan=selected_plan, next_url=next_url)
 
     @app.route("/cadastro", methods=["GET", "POST"])
     def cadastro():

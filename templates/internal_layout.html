@@ -30,7 +30,11 @@
           <small>{{ settings.business_type or 'Pequeno negócio' }}</small>
         </div>
         <span class="plan-badge {{ 'inactive' if settings.plan == 'Sem assinatura' else '' }}">{{ settings.plan or 'Sem assinatura' }}</span>
-        <span class="active-dot {{ 'muted' if settings.plan == 'Sem assinatura' else '' }}"><i></i>{{ 'Escolha um plano' if settings.plan == 'Sem assinatura' else 'Sistema ativo' }}</span>
+        {% if settings.plan == 'Sem assinatura' %}
+        <a class="active-dot muted selectable-plan-link" href="{{ url_for('precos') }}"><i></i>Escolher plano</a>
+        {% else %}
+        <span class="active-dot"><i></i>Sistema ativo</span>
+        {% endif %}
         <a class="logout-link" href="{{ url_for('logout') }}">Sair da conta</a>
       </div>
     </aside>

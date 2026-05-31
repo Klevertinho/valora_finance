@@ -1484,3 +1484,11 @@ select option:hover {
   background: #94a3b8;
   box-shadow: 0 0 0 4px rgba(148,163,184,.12);
 }
+
+/* Production stability polish */
+.selectable-plan-link{cursor:pointer;text-decoration:none;border-radius:999px;padding:4px 0;color:#93c5fd!important;font-weight:800}
+.selectable-plan-link:hover{color:#bfdbfe!important;text-decoration:underline}
+.readonly-plan-box{display:grid;gap:4px;padding:14px;border:1px solid rgba(148,163,184,.16);border-radius:14px;background:rgba(255,255,255,.035)}
+.readonly-plan-box span{font-size:12px;color:var(--muted);font-weight:800}
+.readonly-plan-box strong{font-size:18px;color:var(--text)}
+.readonly-plan-box small{font-size:12px;color:var(--muted-2)}

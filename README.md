@@ -1,3 +1,15 @@
+# Valora Finance — Render Python Fix
+
+IMPORTANTE: no Render, defina `PYTHON_VERSION=3.11.9` nas variáveis de ambiente. O app usa `psycopg2-binary` para Postgres/Supabase e pode falhar em Python 3.14.
+
+Start Command recomendado:
+
+```bash
+gunicorn "app:create_app()" --bind 0.0.0.0:$PORT
+```
+
+---
+
 # Valora Finance
 
 Base Flask/SQLite da Valora Finance com estrutura de SaaS: landing pública, autenticação local, rotas protegidas, isolamento por empresa, persistência em banco local e schema Supabase pronto para produção.
