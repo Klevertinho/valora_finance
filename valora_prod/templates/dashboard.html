@@ -1,0 +1,132 @@
+{% extends 'internal_layout.html' %}
+{% block content %}
+{% if no_data %}
+<section class="empty-cockpit card clean-empty">
+  <div class="empty-cockpit-copy">
+    <span class="eyebrow">Demo disponível</span>
+    <h2>Veja o sistema com dados prontos.</h2>
+    <p>Carregue uma base de demonstração para entender a proposta do produto antes de começar os cadastros.</p>
+    <div class="empty-actions">
+      <a class="btn btn-gold" href="{{ url_for('load_demo_data') }}">Ver demonstração</a>
+      <a class="btn btn-ghost" href="#nova-movimentacao">Começar do zero</a>
+    </div>
+  </div>
+  <div class="empty-cockpit-preview compact-preview" aria-hidden="true">
+    <div class="preview-health"><span>Score</span><b>72</b></div>
+    <div class="preview-chart"><i style="height:58%"></i><i style="height:42%"></i><i style="height:76%"></i><i style="height:53%"></i></div>
+  </div>
+</section>
+{% else %}
+{% set focus_cards = metric_cards %}
+
+<section class="overview-focus cleaner-overview">
+  <article class="health-panel card status-{{ health.class }} hero-health">
+    <div class="health-header">
+      <div>
+        <span class="eyebrow">Saúde financeira</span>
+        <h2>{{ health.label }}</h2>
+        <p class="health-copy">{{ health.message }}</p>
+      </div>
+      <span class="status-badge status-{{ health.class }}">{{ score }}/100</span>
+    </div>
+
+    <div class="health-main clean-health-main">
+      <div>
+        <strong class="money-value">{{ month_net|currency }}</strong>
+        <small>Saldo líquido do mês</small>
+      </div>
+      <div class="gauge" style="--score: {{ score }}"><span>{{ score }}</span></div>
+    </div>
+
+    <div class="health-stats slim-health-stats">
+      <span>Despesas: <b>{{ '%.0f' % expense_ratio }}%</b></span>
+      <span>Tendência: <b>{{ metric_cards[0].trend }}</b></span>
+      <span>Críticos: <b>{{ stock.critical_count }}</b></span>
+      <a href="{{ url_for('relatorios') }}">Ver relatório</a>
+    </div>
+  </article>
+
+  <div class="metric-grid simpler-metrics compact-three">
+    {% for card in focus_cards %}
+    <article class="metric-card card compact-metric-card {{ card.kind }}">
+      <div class="metric-top"><span class="metric-symbol">{{ card.icon }}</span><p>{{ card.title }}</p></div>
+      <strong class="money-value">{{ card.value }}</strong>
+      <small>{{ card.trend }}</small>
+    </article>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="clean-dashboard-grid cleaner-grid">
+  <article class="card chart-panel clean-flow">
+    <div class="card-head">
+      <div>
+        <h3>Fluxo financeiro</h3>
+        <p>Receitas e despesas dos últimos 7 dias.</p>
+      </div>
+      <span class="chart-pill">7 dias</span>
+    </div>
+    <div class="chart-with-axis">
+      <div class="y-axis"><span>R$ 5k</span><span>R$ 2,5k</span><span>R$ 0</span></div>
+      <div class="combo-chart finance-chart tall-chart">
+        {% for row in weekly_data %}
+        <div class="combo-day">
+          <div class="bars" title="{{ row.label }} · Receita {{ row.revenue|currency }} · Despesa {{ row.expenses|currency }} · Saldo {{ (row.revenue - row.expenses)|currency }}">
+            <span class="bar income" style="height: {{ row.revenue_height }}%"></span>
+            <span class="bar expense" style="height: {{ row.expenses_height }}%"></span>
+          </div>
+          <small>{{ row.label }}</small>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    <div class="legend"><span><i class="income-dot"></i>Receitas</span><span><i class="expense-dot"></i>Despesas</span></div>
+  </article>
+
+  <aside class="card priority-panel clean-priority-panel">
+    <div class="card-head"><div><span class="eyebrow">Leitura rápida</span><h3>Prioridades</h3></div></div>
+    <div class="priority-stack compact-priority-stack">
+      {% for insight in insights[:2] %}
+      <div class="copilot-item {{ insight.class }}"><span></span><div><strong>{{ insight.title }}</strong><small>{{ insight.text }}</small></div></div>
+      {% endfor %}
+    </div>
+
+    <div class="priority-block compact-summary-block">
+      <div class="mini-head"><strong>Estoque</strong><a href="{{ url_for('estoque') }}">Abrir</a></div>
+      <div class="mini-summary-list">
+        <div><span>Itens críticos</span><b>{{ stock.critical_count }}</b></div>
+        <div><span>Total em estoque</span><b>{{ stock.units }}</b></div>
+      </div>
+    </div>
+  </aside>
+</section>
+
+<section class="compact-details-grid clean-two">
+  <article class="card recent-card compact-card">
+    <div class="card-head"><h3>Atividade recente</h3><a href="{{ url_for('financas') }}">Ver tudo</a></div>
+    {% if recent_transactions %}
+    <div class="activity-list compact-list">
+      {% for tx in recent_transactions[:4] %}
+      <div class="activity-row">
+        <span class="activity-icon {{ 'positive' if tx.amount > 0 else 'negative' }}">{{ '+' if tx.amount > 0 else '−' }}</span>
+        <div><strong>{{ tx.description }}</strong><small>{{ tx.business_category }}</small></div>
+        <b class="{{ 'positive' if tx.amount > 0 else 'negative' }}">{{ tx.amount|currency }}</b>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state tiny">Sem movimentações registradas.</div>
+    {% endif %}
+  </article>
+
+  <article class="card compact-card today-card">
+    <div class="card-head"><h3>Resumo do dia</h3></div>
+    <div class="mini-stats daily-mini-stats">
+      <div><span>Entradas</span><b class="money-value">{{ today_summary.revenue|currency }}</b></div>
+      <div><span>Saídas</span><b class="money-value">{{ today_summary.expenses|currency }}</b></div>
+      <div><span>Resultado</span><b class="money-value {{ 'positive' if today_summary.net >= 0 else 'negative' }}">{{ today_summary.net|currency }}</b></div>
+    </div>
+  </article>
+</section>
+{% endif %}
+{% endblock %}

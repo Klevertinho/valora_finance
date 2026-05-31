@@ -1,0 +1,13 @@
+{% extends 'auth_layout.html' %}
+{% block content %}
+<div class="auth-head">
+  <span class="eyebrow">Acesso</span>
+  <h2>Recuperar senha</h2>
+  <p>Informe seu email para receber as instruções de recuperação.</p>
+</div>
+<form method="post" class="auth-form">
+  <label>Email<input type="email" name="email" value="{{ email or '' }}" placeholder="seu@email.com" required></label>
+  <button class="btn btn-primary wide" type="submit">Enviar instruções</button>
+</form>
+<div class="auth-links"><a href="{{ url_for('login') }}">Voltar ao login</a></div>
+{% endblock %}

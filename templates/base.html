@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="pt-br">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <title>{{ title if title else 'Sistema Finanças & Estoque' }}</title>
+    <!-- Estilos locais -->
+    <link href="{{ url_for('static', filename='style.css') }}" rel="stylesheet" />
+  </head>
+  <body>
+    <nav class="navbar">
+      <div class="nav-container">
+        <a class="logo" href="{{ url_for('dashboard') }}">Fin&Stock</a>
+        <ul class="nav-links">
+          <li><a href="{{ url_for('dashboard') }}" class="{% if request.path == url_for('dashboard') %}active{% endif %}">Dashboard</a></li>
+          <li><a href="{{ url_for('financas') }}" class="{% if request.path == url_for('financas') %}active{% endif %}">Finanças</a></li>
+          <li><a href="{{ url_for('estoque') }}" class="{% if request.path == url_for('estoque') %}active{% endif %}">Estoque</a></li>
+        </ul>
+      </div>
+    </nav>
+    <div class="container">
+      {% block content %}{% endblock %}
+    </div>
+  </body>
+</html>

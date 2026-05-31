@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{{ page_title }} | Valora Finance</title>
+  <meta name="robots" content="noindex, nofollow" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+</head>
+<body class="app-body">
+  <div class="app-shell">
+    <aside class="sidebar">
+      <a class="brand" href="{{ url_for('dashboard') }}" aria-label="Valora Finance">
+        <span class="brand-logo"><img src="{{ url_for('static', filename='valora-logo-gold.png') }}" alt="Logo Valora Finance" /></span>
+        <span class="brand-copy"><strong>Valora Finance</strong><small>Gestão inteligente</small></span>
+      </a>
+
+      <nav class="sidebar-nav" aria-label="Navegação principal">
+        <a href="{{ url_for('dashboard') }}" class="nav-link {% if request.endpoint == 'dashboard' %}active{% endif %}"><span class="icon i-overview"></span>Visão geral</a>
+        <a href="{{ url_for('financas') }}" class="nav-link {% if request.endpoint == 'financas' %}active{% endif %}"><span class="icon i-finance"></span>Financeiro</a>
+        <a href="{{ url_for('estoque') }}" class="nav-link {% if request.endpoint == 'estoque' %}active{% endif %}"><span class="icon i-stock"></span>Estoque</a>
+        <a href="{{ url_for('vendas') }}" class="nav-link {% if request.endpoint == 'vendas' %}active{% endif %}"><span class="icon i-sales"></span>Vendas</a>
+        <a href="{{ url_for('relatorios') }}" class="nav-link {% if request.endpoint == 'relatorios' %}active{% endif %}"><span class="icon i-report"></span>Relatórios</a>
+        <a href="{{ url_for('configuracoes') }}" class="nav-link {% if request.endpoint == 'configuracoes' %}active{% endif %}"><span class="icon i-settings"></span>Configurações</a>
+      </nav>
+
+      <div class="sidebar-account">
+        <div>
+          <strong>{{ settings.company_name or 'Empresa demo' }}</strong>
+          <small>{{ settings.business_type or 'Pequeno negócio' }}</small>
+        </div>
+        <span class="plan-badge">{{ settings.plan or 'Profissional' }}</span>
+        <span class="active-dot"><i></i>Sistema ativo</span>
+        <a class="logout-link" href="{{ url_for('logout') }}">Sair da conta</a>
+      </div>
+    </aside>
+
+    <main class="main-panel">
+      <header class="topbar">
+        <div class="page-title-block">
+          <h1>{{ page_title }}</h1>
+          {% if page_subtitle %}<p>{{ page_subtitle }}</p>{% endif %}
+        </div>
+        <div class="topbar-actions">
+          <span class="period-pill">Este mês</span>
+          {% for action in page_actions or [] %}
+          <a class="btn btn-{{ action.class }}" href="{{ action.url }}">{{ action.label }}</a>
+          {% endfor %}
+        </div>
+      </header>
+
+      <section class="content-wrap">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+          <div class="flash-stack">
+            {% for category, message in messages %}<div class="flash flash-{{ category }}">{{ message }}</div>{% endfor %}
+          </div>
+          {% endif %}
+        {% endwith %}
+        {% block content %}{% endblock %}
+      </section>
+    </main>
+  </div>
+
+  <div id="nova-movimentacao" class="modal-shell" aria-hidden="true">
+    <a class="modal-backdrop" href="#"></a>
+    <div class="modal-card drawer-card">
+      <div class="modal-head"><div><span class="eyebrow">Caixa</span><h2>Nova movimentação</h2></div><a class="modal-close" href="#">×</a></div>
+      <form method="post" action="{{ url_for('financas') }}" class="modal-form">
+        <label>Tipo<select name="category" required><option value="receita">Entrada</option><option value="despesa">Saída</option></select></label>
+        <label>Descrição<input name="description" placeholder="Venda balcão, fornecedor..." required></label>
+        <label>Valor<input name="amount" type="number" step="0.01" placeholder="0,00" required></label>
+        <label>Categoria<input name="business_category" placeholder="Vendas, Aluguel, Marketing" required></label>
+        <label>Data<input name="date" type="date" value="{{ today_iso }}" required></label>
+        <button class="btn btn-primary wide" type="submit">Salvar</button>
+      </form>
+    </div>
+  </div>
+
+  <div id="novo-produto" class="modal-shell" aria-hidden="true">
+    <a class="modal-backdrop" href="#"></a>
+    <div class="modal-card drawer-card">
+      <div class="modal-head"><div><span class="eyebrow">Estoque</span><h2>Novo produto</h2></div><a class="modal-close" href="#">×</a></div>
+      <form method="post" action="{{ url_for('estoque') }}" class="modal-form">
+        <input type="hidden" name="action" value="add" />
+        <label>Produto<input name="name" placeholder="Shampoo profissional" required></label>
+        <label>Categoria<input name="category" placeholder="Cabelo, Insumo..." required></label>
+        <label>Quantidade<input name="quantity" type="number" min="0" value="1" required></label>
+        <label>Mínimo<input name="min_stock" type="number" min="0" value="1" required></label>
+        <label>Custo<input name="cost_price" type="number" step="0.01" placeholder="0,00" required></label>
+        <label>Venda<input name="sale_price" type="number" step="0.01" placeholder="0,00" required></label>
+        <button class="btn btn-primary wide" type="submit">Salvar</button>
+      </form>
+    </div>
+  </div>
+
+  <div id="nova-venda" class="modal-shell" aria-hidden="true">
+    <a class="modal-backdrop" href="#"></a>
+    <div class="modal-card drawer-card">
+      <div class="modal-head"><div><span class="eyebrow">Venda</span><h2>Nova venda</h2></div><a class="modal-close" href="#">×</a></div>
+      <form method="post" action="{{ url_for('estoque') }}" class="modal-form">
+        <input type="hidden" name="action" value="sell" />
+        <label>Produto<select name="item_id" required>{% for item in items or [] %}<option value="{{ item.id }}">{{ item.name }} · {{ item.quantity }} un.</option>{% endfor %}</select></label>
+        <label>Quantidade<input name="sell_quantity" type="number" min="1" value="1" required></label>
+        <button class="btn btn-primary wide" type="submit">Registrar venda</button>
+      </form>
+    </div>
+  </div>
+</body>
+</html>

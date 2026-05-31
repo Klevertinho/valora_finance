@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{{ title or 'Valora Finance' }}</title>
+  <meta name="robots" content="noindex, nofollow" />
+  <meta name="theme-color" content="#0B1120" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+</head>
+<body class="auth-body">
+  <main class="auth-shell">
+    <section class="auth-brand-panel">
+      <a class="auth-brand" href="{{ url_for('landing') }}">
+        <span class="brand-logo"><img src="{{ url_for('static', filename='valora-logo-gold.png') }}" alt="Logo Valora Finance" /></span>
+        <span><strong>Valora Finance</strong><small>Gestão inteligente</small></span>
+      </a>
+      <div class="auth-copy">
+        <span class="eyebrow">Sistema financeiro</span>
+        <h1>Controle seu negócio com clareza.</h1>
+        <p>Caixa, estoque, vendas e fechamento em uma experiência simples para pequenos negócios.</p>
+      </div>
+    </section>
+    <section class="auth-card card">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        <div class="auth-flashes">
+          {% for category, message in messages %}<div class="flash inline flash-{{ category }}">{{ message }}</div>{% endfor %}
+        </div>
+        {% endif %}
+      {% endwith %}
+      {% block content %}{% endblock %}
+    </section>
+  </main>
+</body>
+</html>

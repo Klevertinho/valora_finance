@@ -1,0 +1,22 @@
+{% extends 'internal_layout.html' %}
+{% block content %}
+<section class="page-grid two-one">
+  <article class="card form-card">
+    <div class="card-head"><div><h3>Empresa</h3><p>Preferências básicas</p></div></div>
+    <form method="post" class="smart-form">
+      <input type="hidden" name="action" value="save_settings">
+      <label>Nome<input name="company_name" value="{{ settings.company_name }}" required></label>
+      <label>Tipo<select name="business_type">
+        {% for option in ['Salão de beleza','Barbearia','Loja de roupas','Açaíteria','Pizzaria','Mercado pequeno','Outro'] %}<option value="{{ option }}" {% if settings.business_type == option %}selected{% endif %}>{{ option }}</option>{% endfor %}
+      </select></label>
+      <label>Plano<select name="plan"><option {% if settings.plan == 'Inicial' %}selected{% endif %}>Inicial</option><option {% if settings.plan == 'Profissional' %}selected{% endif %}>Profissional</option></select></label>
+      <label>Visual<select name="visual_preference"><option {% if settings.visual_preference == 'Graphite Premium' %}selected{% endif %}>Graphite Premium</option><option {% if settings.visual_preference == 'Executivo compacto' %}selected{% endif %}>Executivo compacto</option></select></label>
+      <button class="btn btn-primary" type="submit">Salvar</button>
+    </form>
+  </article>
+  <aside class="side-stack">
+    <article class="card"><div class="card-head"><h3>Dados/demo</h3></div><div class="settings-actions"><form method="post"><input type="hidden" name="action" value="load_demo"><button class="btn btn-gold wide" type="submit">Carregar demo</button></form><form method="post" onsubmit="return confirm('Limpar dados?')"><input type="hidden" name="action" value="clear_data"><button class="btn btn-danger wide" type="submit">Limpar dados</button></form></div></article>
+    <article class="card"><div class="card-head"><h3>Plano</h3></div><div class="plan-card"><b>Profissional</b><span>Sistema ativo</span></div></article>
+  </aside>
+</section>
+{% endblock %}

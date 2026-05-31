@@ -1,0 +1,59 @@
+{% extends 'internal_layout.html' %}
+{% block content %}
+<section class="summary-strip summary-strip-3 sales-summary">
+  <article class="summary-card card tone-success large-number-card">
+    <div class="summary-top"><span class="metric-symbol">+</span><p>Vendas</p></div>
+    <strong>{{ sale_transactions|length }}</strong>
+    <small>No período</small>
+  </article>
+  <article class="summary-card card tone-primary large-number-card">
+    <div class="summary-top"><span class="metric-symbol">R$</span><p>Receita de vendas</p></div>
+    <strong class="money-value">{{ sales_total|currency }}</strong>
+    <small>Recebimentos</small>
+  </article>
+  <article class="summary-card card tone-warning large-number-card">
+    <div class="summary-top"><span class="metric-symbol">Ø</span><p>Ticket médio</p></div>
+    <strong class="money-value">{{ ticket_average|currency }}</strong>
+    <small>Por venda</small>
+  </article>
+</section>
+
+<section class="single-column-stack">
+  <article class="card chart-panel clean-panel sales-chart-panel">
+    <div class="card-head compact-head">
+      <div><h3>Vendas por dia</h3><p>Receita comercial dos últimos 7 dias</p></div>
+    </div>
+    <div class="chart-with-axis">
+      <div class="y-axis"><span>R$ 5k</span><span>R$ 2,5k</span><span>R$ 0</span></div>
+      <div class="combo-chart finance-chart tall-chart sales-chart">
+        {% for row in weekly_data %}
+        <div class="combo-day">
+          <div class="bars single" title="{{ row.label }} · Vendas {{ row.revenue|currency }}">
+            <span class="bar income wide-bar" style="height:{{ row.revenue_height }}%"></span>
+          </div>
+          <small>{{ row.label }}</small>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </article>
+
+  <article class="card table-card clean-panel">
+    <div class="card-head compact-head"><div><h3>Vendas recentes</h3><p>Histórico comercial</p></div></div>
+    {% if sale_transactions %}
+    <div class="table-wrap"><table class="data-table sales-table"><thead><tr><th>Descrição</th><th>Categoria</th><th>Data</th><th class="table-money">Valor</th></tr></thead><tbody>
+    {% for tx in sale_transactions[:8] %}
+    <tr>
+      <td><strong>{{ tx.description }}</strong></td>
+      <td><span class="chip small">{{ tx.business_category }}</span></td>
+      <td>{{ tx.date|date_br }}</td>
+      <td class="positive table-money">{{ tx.amount|currency }}</td>
+    </tr>
+    {% endfor %}
+    </tbody></table></div>
+    {% else %}
+    <div class="empty-state strong">Sem vendas registradas.</div>
+    {% endif %}
+  </article>
+</section>
+{% endblock %}

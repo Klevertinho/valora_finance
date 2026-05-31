@@ -1,0 +1,192 @@
+{% extends 'public_layout.html' %}
+{% block structured_data %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "Valora Finance",
+  "applicationCategory": "BusinessApplication",
+  "operatingSystem": "Web",
+  "url": "{{ site_url }}/",
+  "description": "Sistema financeiro com IA para controle de caixa, vendas, estoque e fechamento diário em pequenos negócios.",
+  "brand": {"@type": "Brand", "name": "Valora Finance"},
+  "offers": [
+    {"@type": "Offer", "name": "Plano Inicial", "price": "39.00", "priceCurrency": "BRL", "availability": "https://schema.org/InStock"},
+    {"@type": "Offer", "name": "Plano Profissional", "price": "69.00", "priceCurrency": "BRL", "availability": "https://schema.org/InStock"}
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {"@type":"Question","name":"Preciso entender de finanças para usar?","acceptedAnswer":{"@type":"Answer","text":"Não. A Valora Finance mostra caixa, estoque e prioridades em linguagem simples para o dono do negócio."}},
+    {"@type":"Question","name":"Como funciona a assinatura?","acceptedAnswer":{"@type":"Answer","text":"A assinatura é mensal, sem fidelidade. O usuário escolhe um plano, cria a conta e pode cancelar quando quiser."}},
+    {"@type":"Question","name":"Funciona para meu tipo de negócio?","acceptedAnswer":{"@type":"Answer","text":"Sim. É ideal para MEIs, salões, barbearias, lojas, pizzarias, açaíterias e prestadores de serviço."}},
+    {"@type":"Question","name":"Tem inteligência artificial?","acceptedAnswer":{"@type":"Answer","text":"Sim. A Valora Finance usa insights inteligentes para destacar despesas, estoque crítico e ações recomendadas."}}
+  ]
+}
+</script>
+{% endblock %}
+{% block content %}
+<main class="lovable-page">
+  <section class="lovable-hero">
+    <div class="lovable-hero-glow lovable-hero-glow-a" aria-hidden="true"></div>
+    <div class="lovable-hero-glow lovable-hero-glow-b" aria-hidden="true"></div>
+    <div class="lovable-container lovable-hero-grid">
+      <div class="lovable-hero-copy" data-lv-reveal>
+        <span class="lovable-pill">Inteligência financeira sem complicação</span>
+        <h1>Seu negócio sob controle. Sem planilhas, sem caos.</h1>
+        <p>O Valora mostra para onde vai seu dinheiro, o que está sobrando, o que está faltando e o que fazer a seguir.</p>
+        <div class="lovable-hero-actions">
+          <a class="lovable-btn lovable-btn-primary lovable-btn-lg" href="#precos">Assinar e começar agora</a>
+          <a class="lovable-link" href="#como-funciona">Ver como funciona</a>
+        </div>
+        <small>Assinatura mensal · Sem fidelidade · Cancele em um clique</small>
+      </div>
+
+      <aside class="lovable-dashboard" data-lv-reveal role="img" aria-label="Painel da Valora Finance com saldo, entradas, lucro, fluxo de caixa e produtos em destaque">
+        <div class="lovable-browser">valora.app/dashboard</div>
+        <div class="lovable-bento">
+          <article class="lovable-balance-card">
+            <span>Saldo em caixa</span>
+            <strong>R$ 89.102</strong>
+            <em>+12,4%</em>
+          </article>
+          <article class="lovable-stat-card"><span>Entradas do mês</span><strong>R$ 52.420</strong><em>+18,2%</em></article>
+          <article class="lovable-stat-card"><span>Lucro estimado</span><strong>R$ 21.240</strong><em>+9,1%</em></article>
+          <article class="lovable-chart-card">
+            <div><span>Fluxo de caixa · 7 meses</span><em>+24% vs trimestre anterior</em></div>
+            <div class="lovable-bars" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+          </article>
+          <article class="lovable-products-card">
+            <span>Top produtos</span>
+            <div><b>Corte Premium</b><i style="--w:92%"></i><small>92%</small></div>
+            <div><b>Coloração</b><i style="--w:74%"></i><small>74%</small></div>
+            <div><b>Hidratação</b><i style="--w:58%"></i><small>58%</small></div>
+            <div><b>Barba</b><i style="--w:41%"></i><small>41%</small></div>
+          </article>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <section class="lovable-trust" aria-label="Segmentos atendidos" data-lv-reveal>
+    <div class="lovable-container">
+      <span>Pensado para negócios locais que precisam de clareza</span>
+      <div>
+        <b>Salões</b><b>Barbearias</b><b>Lojas</b><b>Pizzarias</b><b>Açaíterias</b><b>Prestadores</b>
+      </div>
+    </div>
+  </section>
+
+  <section class="lovable-section lovable-problem" data-lv-reveal>
+    <div class="lovable-container lovable-split">
+      <div>
+        <span class="lovable-kicker">O problema</span>
+        <h2>Gerir um negócio pequeno virou trabalho de noite e fim de semana.</h2>
+      </div>
+      <div class="lovable-problem-grid">
+        <article><h3>Planilhas que ninguém entende</h3><p>Você abre, fecha e continua sem saber se a empresa está crescendo.</p></article>
+        <article><h3>Dinheiro entra e some</h3><p>Sobra a sensação de que está faltando algo, mas ninguém sabe onde.</p></article>
+        <article><h3>Sistemas complicados demais</h3><p>Você não tem tempo para aprender contabilidade. Precisa de respostas simples.</p></article>
+      </div>
+    </div>
+  </section>
+
+  <section id="recursos" class="lovable-section" data-lv-reveal>
+    <div class="lovable-container lovable-section-head">
+      <span class="lovable-kicker">Recursos</span>
+      <h2>Tudo que você precisa. Nada que você não precisa.</h2>
+    </div>
+    <div class="lovable-container lovable-feature-grid">
+      <article><h3>Fluxo de caixa claro</h3><p>Veja em segundos quanto entra, quanto sai e quanto sobra.</p></article>
+      <article><h3>Insights de IA</h3><p>A IA lê seus dados e mostra o que merece atenção primeiro.</p></article>
+      <article><h3>Estoque sob controle</h3><p>Saiba o que está acabando e o capital parado em produtos.</p></article>
+      <article><h3>Previsões realistas</h3><p>Saldo previsto considerando contas e movimentações do negócio.</p></article>
+      <article><h3>Dados por conta</h3><p>Cada negócio acessa somente suas próprias informações.</p></article>
+      <article><h3>Pronto em minutos</h3><p>Sem instalação. Crie a conta e comece a registrar.</p></article>
+    </div>
+  </section>
+
+  <section id="como-funciona" class="lovable-section lovable-steps" data-lv-reveal>
+    <div class="lovable-container lovable-section-head">
+      <span class="lovable-kicker">Como funciona</span>
+      <h2>Três passos. Zero dor de cabeça.</h2>
+    </div>
+    <div class="lovable-container lovable-step-grid">
+      <article><b>01</b><h3>Crie sua conta</h3><p>Sem instalação, sem treinamento e sem burocracia.</p></article>
+      <article><b>02</b><h3>Registre o dia a dia</h3><p>Lance entradas, saídas, vendas e estoque.</p></article>
+      <article><b>03</b><h3>Receba clareza</h3><p>O Valora organiza tudo e mostra o que importa.</p></article>
+    </div>
+  </section>
+
+  <section id="precos" class="lovable-section lovable-pricing" data-lv-reveal>
+    <div class="lovable-container lovable-section-head">
+      <span class="lovable-kicker">Preços</span>
+      <h2>Escolha o plano do tamanho do seu negócio.</h2>
+      <p>Assinatura mensal direta. Sem fidelidade, sem surpresa na fatura.</p>
+    </div>
+    <div class="lovable-container lovable-price-grid">
+      <article class="lovable-price-card">
+        <h3>Inicial</h3>
+        <p>Para começar a organizar.</p>
+        <strong>R$ 39<small>/mês</small></strong>
+        <ul><li>Controle financeiro</li><li>Estoque simples</li><li>Vendas</li><li>Relatórios essenciais</li></ul>
+        <a class="lovable-btn lovable-btn-ghost" href="{{ url_for('cadastro', plan='inicial') }}">Assinar Inicial</a>
+      </article>
+      <article class="lovable-price-card lovable-price-featured">
+        <em>★ Mais escolhido</em>
+        <h3>Profissional</h3>
+        <p>O mais escolhido por donos de negócio.</p>
+        <strong>R$ 69<small>/mês</small></strong>
+        <ul><li>Tudo do Inicial</li><li>IA de insights</li><li>Dashboard completo</li><li>Alertas de estoque</li><li>Histórico de fechamentos</li></ul>
+        <a class="lovable-btn lovable-btn-primary" href="{{ url_for('cadastro', plan='profissional') }}">Assinar Profissional agora</a>
+      </article>
+    </div>
+    <p class="lovable-price-note">Pagamento mensal recorrente · Sem fidelidade · Cancele em um clique</p>
+  </section>
+
+  <section id="faq" class="lovable-section lovable-faq" data-lv-reveal>
+    <div class="lovable-container lovable-section-head">
+      <span class="lovable-kicker">Dúvidas frequentes</span>
+      <h2>Perguntas que todo mundo faz.</h2>
+    </div>
+    <div class="lovable-container lovable-faq-list">
+      <details open><summary>Preciso entender de finanças para usar?</summary><p>Não. O Valora fala português simples e mostra o que importa.</p></details>
+      <details><summary>Como funciona a assinatura?</summary><p>É mensal recorrente. Você assina, usa imediatamente e pode cancelar quando quiser.</p></details>
+      <details><summary>Funciona para qualquer tipo de negócio?</summary><p>É ideal para salões, barbearias, lojas, pizzarias, açaíterias e prestadores.</p></details>
+      <details><summary>Tem insights de IA?</summary><p>Sim. A Valora destaca despesas, estoque crítico e ações prioritárias.</p></details>
+      <details><summary>Posso cancelar quando quiser?</summary><p>Pode. Sem fidelidade e sem multa.</p></details>
+    </div>
+  </section>
+
+  <section class="lovable-final" data-lv-reveal>
+    <div class="lovable-container">
+      <h2>Comece a ter clareza ainda hoje.</h2>
+      <p>Saia da adivinhação e decida com dados simples.</p>
+      <a class="lovable-btn lovable-btn-primary lovable-btn-lg" href="#precos">Assinar e começar agora</a>
+      <small>Pagamento seguro · Cancele em um clique</small>
+    </div>
+  </section>
+</main>
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const items = document.querySelectorAll('[data-lv-reveal]');
+    if (!('IntersectionObserver' in window)) {
+      items.forEach((el) => el.classList.add('is-visible'));
+      return;
+    }
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('is-visible');
+          observer.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.12, rootMargin: '0px 0px -32px 0px' });
+    items.forEach((el) => observer.observe(el));
+  });
+</script>
+{% endblock %}
