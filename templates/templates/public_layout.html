@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  {% set final_title = title or 'Valora Finance | Controle financeiro para pequenos negócios' %}
+  {% set final_description = description or 'Sistema financeiro com IA para controlar caixa, vendas, estoque, despesas e fechamento diário em pequenos negócios.' %}
+  {% set final_canonical = canonical_url or (site_url ~ (request.path if request.path != '/' else '/')) %}
+  {% set final_og_title = og_title or 'Valora Finance | Caixa, vendas e estoque em uma visão simples' %}
+  {% set final_og_description = og_description or 'Organize financeiro, estoque, vendas e relatórios em um painel inteligente para pequenos negócios.' %}
+  {% set final_og_image = og_image or (site_url ~ url_for('static', filename='og-valora-finance.png')) %}
+  <title>{{ final_title }}</title>
+  <meta name="description" content="{{ final_description }}" />
+  <meta name="keywords" content="controle financeiro para pequenos negócios, controle financeiro para MEI, sistema financeiro para pequenas empresas, sistema de estoque para pequenas empresas, controle de vendas e estoque, sistema para controlar caixa, gestão financeira para pequenos negócios, fechamento diário de caixa" />
+  <meta name="robots" content="{{ robots_meta or 'index, follow' }}" />
+  <link rel="canonical" href="{{ final_canonical }}" />
+  <meta name="theme-color" content="#070D18" />
+
+  <meta property="og:title" content="{{ final_og_title }}" />
+  <meta property="og:description" content="{{ final_og_description }}" />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="{{ final_canonical }}" />
+  <meta property="og:site_name" content="Valora Finance" />
+  <meta property="og:locale" content="pt_BR" />
+  <meta property="og:image" content="{{ final_og_image }}" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="Valora Finance - controle financeiro e estoque para pequenos negócios" />
+
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="{{ final_og_title }}" />
+  <meta name="twitter:description" content="{{ final_og_description }}" />
+  <meta name="twitter:image" content="{{ final_og_image }}" />
+
+  {% block structured_data %}{% endblock %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+</head>
+<body class="lovable-body">
+  <header class="lovable-header">
+    <div class="lovable-container lovable-header-inner">
+      <a class="lovable-brand" href="{{ url_for('landing') }}" aria-label="Valora Finance - página inicial">
+        <span class="lovable-brand-mark"><img src="{{ url_for('static', filename='valora-logo-mark.png') }}" alt="Logo Valora Finance" /></span>
+        <span><strong>VALORA</strong></span>
+      </a>
+
+      <nav class="lovable-nav" aria-label="Navegação principal">
+        <a href="{{ url_for('landing') }}#recursos">Recursos</a>
+        <a href="{{ url_for('landing') }}#como-funciona">Como funciona</a>
+        <a href="{{ url_for('landing') }}#precos">Preços</a>
+        <a href="{{ url_for('landing') }}#faq">Dúvidas</a>
+      </nav>
+
+      <div class="lovable-actions">
+        <a class="lovable-btn lovable-btn-ghost" href="{{ url_for('login') }}">Entrar</a>
+        <a class="lovable-btn lovable-btn-primary" href="{{ url_for('landing') }}#precos">Assinar agora</a>
+      </div>
+
+      <details class="lovable-mobile-menu">
+        <summary aria-label="Abrir menu de navegação">Menu</summary>
+        <div>
+          <a href="{{ url_for('landing') }}#recursos">Recursos</a>
+          <a href="{{ url_for('landing') }}#como-funciona">Como funciona</a>
+          <a href="{{ url_for('landing') }}#precos">Preços</a>
+          <a href="{{ url_for('landing') }}#faq">Dúvidas</a>
+          <a href="{{ url_for('login') }}">Entrar</a>
+          <a href="{{ url_for('landing') }}#precos">Assinar agora</a>
+        </div>
+      </details>
+    </div>
+  </header>
+
+  {% block content %}{% endblock %}
+
+  <footer class="lovable-footer">
+    <div class="lovable-container lovable-footer-inner">
+      <a class="lovable-brand" href="{{ url_for('landing') }}" aria-label="Valora Finance - página inicial">
+        <span class="lovable-brand-mark"><img src="{{ url_for('static', filename='valora-logo-mark.png') }}" alt="Logo Valora Finance" /></span>
+        <span><strong>VALORA</strong></span>
+      </a>
+      <p>Feito para pequenos negócios brasileiros.</p>
+      <nav class="lovable-footer-links" aria-label="Links públicos">
+        <a href="{{ url_for('landing') }}#recursos">Recursos</a>
+        <a href="{{ url_for('landing') }}#precos">Preços</a>
+        <a href="{{ url_for('login') }}">Entrar</a>
+        <a href="{{ url_for('cadastro') }}">Criar conta</a>
+        <a href="{{ url_for('termos') }}">Termos</a>
+        <a href="{{ url_for('privacidade') }}">Privacidade</a>
+      </nav>
+      <small>© 2026 Valora Finance.</small>
+    </div>
+  </footer>
+</body>
+</html>

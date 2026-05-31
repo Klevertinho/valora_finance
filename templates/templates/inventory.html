@@ -1,0 +1,107 @@
+{% extends 'internal_layout.html' %}
+{% block content %}
+<section class="summary-strip summary-strip-3">
+  <article class="summary-card card tone-primary">
+    <div class="summary-top"><span class="metric-symbol">□</span><p>Produtos</p></div>
+    <strong>{{ items|length }}</strong>
+    <small>Cadastrados</small>
+  </article>
+  <article class="summary-card card tone-success">
+    <div class="summary-top"><span class="metric-symbol">R$</span><p>Valor em estoque</p></div>
+    <strong class="money-value">{{ stock.value|currency }}</strong>
+    <small>Custo estimado</small>
+  </article>
+  <article class="summary-card card tone-warning">
+    <div class="summary-top"><span class="metric-symbol">!</span><p>Itens críticos</p></div>
+    <strong>{{ stock.critical_count }}</strong>
+    <small>Precisam de reposição</small>
+  </article>
+</section>
+
+<section class="page-grid inventory-grid">
+  <div class="main-stack">
+    <article class="card table-card clean-panel">
+      <div class="card-head compact-head"><div><h3>Produtos</h3><p>Visão operacional simplificada</p></div></div>
+      {% if items %}
+      <div class="table-wrap">
+        <table class="data-table inventory-table">
+          <thead>
+            <tr>
+              <th>Produto</th>
+              <th>Estoque</th>
+              <th>Preços</th>
+              <th>Margem</th>
+              <th>Status</th>
+              <th class="action-col">Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+          {% for item in items %}
+            <tr>
+              <td class="product-cell">
+                <strong>{{ item.name }}</strong>
+                <small>{{ item.category }}</small>
+              </td>
+              <td class="table-stack center">
+                <strong>{{ item.quantity }}</strong>
+                <small>Mín. {{ item.min_stock }}</small>
+              </td>
+              <td class="table-stack money">
+                <strong class="money-value">{{ item.sale_price|currency }}</strong>
+                <small>Custo {{ item.cost_price|currency }}</small>
+              </td>
+              <td class="table-money {{ 'positive' if item.margin >= 45 else 'negative' if item.margin < 25 else '' }}">{{ '%.1f' % item.margin }}%</td>
+              <td><span class="badge {{ 'danger' if item.status == 'critico' else 'warning' if item.status == 'atencao' else 'success' }}">{{ 'Crítico' if item.status == 'critico' else 'Atenção' if item.status == 'atencao' else 'Saudável' }}</span></td>
+              <td class="actions-cell simpler-actions">
+                <form method="post" action="{{ url_for('estoque') }}">
+                  <input type="hidden" name="action" value="sell"><input type="hidden" name="item_id" value="{{ item.id }}"><input type="hidden" name="sell_quantity" value="1">
+                  <button class="mini-btn primary" type="submit">Vender</button>
+                </form>
+                <details class="row-drawer more-menu">
+                  <summary>Mais</summary>
+                  <div class="menu-card">
+                    <form method="post" action="{{ url_for('estoque') }}" class="menu-form">
+                      <input type="hidden" name="action" value="restock"><input type="hidden" name="item_id" value="{{ item.id }}">
+                      <label>Qtd.<input name="restock_quantity" type="number" min="1" value="1"></label>
+                      <label>Custo total<input name="restock_cost" type="number" step="0.01" value="0"></label>
+                      <button class="mini-btn" type="submit">Repor</button>
+                    </form>
+                    <form method="post" action="{{ url_for('delete_item', item_id=item.id) }}">
+                      <button class="mini-btn danger" type="submit">Excluir</button>
+                    </form>
+                  </div>
+                </details>
+              </td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="empty-state strong">Sem produtos cadastrados.</div>
+      {% endif %}
+    </article>
+  </div>
+
+  <aside class="side-stack compact-side">
+    <article class="card stock-attention clean-panel">
+      <div class="card-head compact-head"><div><h3>Reposição</h3><p>Somente o que merece atenção</p></div></div>
+      {% if stock.critical %}
+      <div class="stock-list clean-stock-list">
+        {% for item in stock.critical[:4] %}
+        <div class="stock-row">
+          <div>
+            <strong>{{ item.name }}</strong>
+            <small>{{ item.quantity }} un. · mín. {{ item.min_stock }}</small>
+          </div>
+          <span class="status-badge status-{{ 'danger' if item.quantity == 0 else 'warning' }}">{{ 'Crítico' if item.quantity == 0 else 'Atenção' }}</span>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="empty-state">Nenhum item em atenção.</div>
+      {% endif %}
+    </article>
+  </aside>
+</section>
+{% endblock %}

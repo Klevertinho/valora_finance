@@ -1,0 +1,84 @@
+{% extends 'internal_layout.html' %}
+{% block content %}
+<section class="summary-strip summary-strip-3">
+  <article class="summary-card card tone-success">
+    <div class="summary-top"><span class="metric-symbol">↑</span><p>Entradas</p></div>
+    <strong class="money-value">{{ revenue|currency }}</strong>
+    <small>No mês</small>
+  </article>
+  <article class="summary-card card tone-danger">
+    <div class="summary-top"><span class="metric-symbol">↓</span><p>Saídas</p></div>
+    <strong class="money-value">{{ expenses|currency }}</strong>
+    <small>No mês</small>
+  </article>
+  <article class="summary-card card tone-primary">
+    <div class="summary-top"><span class="metric-symbol">R$</span><p>Saldo</p></div>
+    <strong class="money-value">{{ net|currency }}</strong>
+    <small>{{ 'Positivo' if net >= 0 else 'Negativo' }}</small>
+  </article>
+</section>
+
+<section class="page-grid finance-grid">
+  <div class="main-stack">
+    <article class="card chart-panel clean-panel">
+      <div class="card-head compact-head">
+        <div><h3>Fluxo de caixa</h3><p>Receitas x saídas · últimos 7 dias</p></div>
+      </div>
+      <div class="chart-with-axis">
+        <div class="y-axis"><span>R$ 5k</span><span>R$ 2,5k</span><span>R$ 0</span></div>
+        <div class="combo-chart finance-chart tall-chart">
+          {% for row in weekly_data %}
+          <div class="combo-day">
+            <div class="bars" title="{{ row.label }} · Entradas {{ row.revenue|currency }} · Saídas {{ row.expenses|currency }} · Saldo {{ (row.revenue - row.expenses)|currency }}">
+              <span class="bar income" style="height:{{ row.revenue_height }}%"></span>
+              <span class="bar expense" style="height:{{ row.expenses_height }}%"></span>
+            </div>
+            <small>{{ row.label }}</small>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="legend"><span><i class="income-dot"></i>Entradas</span><span><i class="expense-dot"></i>Saídas</span></div>
+    </article>
+
+    <article class="card table-card clean-panel">
+      <div class="card-head compact-head"><div><h3>Movimentações</h3><p>Histórico financeiro</p></div></div>
+      {% if transactions %}
+      <div class="table-wrap"><table class="data-table finance-table"><thead><tr><th>Tipo</th><th>Descrição</th><th>Categoria</th><th>Data</th><th class="table-money">Valor</th><th></th></tr></thead><tbody>
+        {% for tx in transactions %}
+        <tr>
+          <td><span class="badge {{ 'success' if tx.amount > 0 else 'danger' }}">{{ 'Entrada' if tx.amount > 0 else 'Saída' }}</span></td>
+          <td><strong>{{ tx.description }}</strong></td>
+          <td><span class="chip small">{{ tx.business_category }}</span></td>
+          <td>{{ tx.date|date_br }}</td>
+          <td class="table-money {{ 'positive' if tx.amount > 0 else 'negative' }}">{{ tx.amount|currency }}</td>
+          <td class="table-action"><form method="post" action="{{ url_for('delete_transaction', item_id=tx.id) }}"><button class="icon-button" type="submit" title="Remover" aria-label="Remover registro">⋯</button></form></td>
+        </tr>
+        {% endfor %}
+      </tbody></table></div>
+      {% else %}
+      <div class="empty-state strong">Sem movimentações registradas.</div>
+      {% endif %}
+    </article>
+  </div>
+
+  <aside class="side-stack compact-side">
+    <article class="card category-card clean-panel">
+      <div class="card-head compact-head"><div><h3>Gastos por categoria</h3><p>Maior peso: {{ major_expense_cat }}</p></div></div>
+      {% if expenses_categories %}
+      <div class="category-list clean-category-list">
+        {% for c in expenses_categories[:4] %}
+        <div class="category-row">
+          <span>{{ c.name }}</span>
+          <b class="money-value">{{ c.value|currency }}</b>
+          <div class="progress"><i style="width:{{ c.width }}%"></i></div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="empty-state">Sem despesas registradas.</div>
+      {% endif %}
+    </article>
+  </aside>
+</section>
+{% endblock %}
