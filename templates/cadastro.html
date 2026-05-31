@@ -7,12 +7,13 @@
 </div>
 <form method="post" class="auth-form">
   <input type="hidden" name="load_demo" value="{{ '1' if load_demo else '0' }}">
+  <input type="hidden" name="plan" value="{{ selected_plan or '' }}">
   <label>Nome<input name="full_name" value="{{ form.full_name or '' }}" placeholder="Seu nome" required></label>
   <label>Email<input type="email" name="email" value="{{ form.email or '' }}" placeholder="seu@email.com" required></label>
   <label>Senha<input type="password" name="password" placeholder="Mínimo 6 caracteres" minlength="6" required></label>
   <label>Nome da empresa<input name="business_name" value="{{ form.business_name or '' }}" placeholder="Ex.: Studio Bella" required></label>
   <label>Tipo de negócio<select name="business_type" required><option value="">Selecione</option>{% for type in business_types %}<option value="{{ type }}" {% if form.business_type == type %}selected{% endif %}>{{ type }}</option>{% endfor %}</select></label>
-  <button class="btn btn-primary wide" type="submit">Começar grátis</button>
+  <button class="btn btn-primary wide" type="submit">{{ 'Criar conta e assinar' if selected_plan else 'Criar conta' }}</button>
 </form>
-<div class="auth-links"><a href="{{ url_for('login') }}">Já tenho conta</a></div>
+<div class="auth-links"><a href="{{ url_for('login', plan=selected_plan, next=url_for('assinar_plano', plan=selected_plan)) if selected_plan else url_for('login') }}">Já tenho conta</a></div>
 {% endblock %}

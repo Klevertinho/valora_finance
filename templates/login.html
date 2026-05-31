@@ -5,14 +5,18 @@
   <h2>Entrar na Valora Finance</h2>
   <p>Entre para continuar gerindo seu negócio.</p>
 </div>
+{% if selected_plan %}
+<div class="demo-login-note plan-login-note">Plano selecionado: <b>{{ 'Profissional' if selected_plan == 'profissional' else 'Inicial' }}</b>. Entre para concluir a assinatura.</div>
+{% endif %}
 <form method="post" class="auth-form">
+  <input type="hidden" name="plan" value="{{ selected_plan or '' }}">
   <label>Email<input type="email" name="email" value="{{ email or '' }}" placeholder="seu@email.com" required></label>
   <label>Senha<input type="password" name="password" placeholder="Sua senha" required></label>
-  <button class="btn btn-primary wide" type="submit">Entrar</button>
+  <button class="btn btn-primary wide" type="submit">{{ 'Entrar e assinar' if selected_plan else 'Entrar' }}</button>
 </form>
 <div class="auth-links">
   <a href="{{ url_for('recuperar_senha') }}">Esqueci minha senha</a>
-  <a href="{{ url_for('cadastro') }}">Criar conta</a>
+  <a href="{{ url_for('cadastro', plan=selected_plan) if selected_plan else url_for('cadastro') }}">Criar conta</a>
 </div>
 <div class="demo-login-note">Conta demo local: <b>demo@valora.local</b> / <b>demo1234</b></div>
 {% endblock %}
