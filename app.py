@@ -623,6 +623,11 @@ def create_app():
         "robots_txt", "sitemap_xml", "healthz", "stripe_webhook", "assinar_plano", "static"
     }
     auth_endpoints = {"login", "cadastro"}
+    subscription_required_endpoints = {
+        "dashboard", "financas", "estoque", "vendas", "relatorios",
+        "load_demo_data", "close_day", "close_month", "daily_pdf", "month_pdf",
+        "delete_transaction", "delete_item"
+    }
 
     def _safe_next_url(value):
         """Allow only internal redirects."""
@@ -633,6 +638,23 @@ def create_app():
     def _valid_plan(value):
         plan = (value or "").lower()
         return plan if plan in {"inicial", "profissional"} else ""
+
+    def _has_paid_or_trial_access():
+        """Only Stripe/webhook-created active or trialing subscriptions unlock the app."""
+        if not session.get("user_id") or not session.get("business_id"):
+            return False
+        try:
+            return bool(subscription_access(get_subscription_for_business()).get("has_access"))
+        except Exception:
+            return False
+
+    def _safe_post_auth_destination(next_url=None):
+        """After login/cadastro, never drop unpaid users inside the app."""
+        next_url = _safe_next_url(next_url)
+        if _has_paid_or_trial_access():
+            return next_url or url_for("dashboard")
+        # Conta criada/logada sem assinatura: sempre vai para planos.
+        return url_for("precos", required="subscription")
 
     @app.before_request
     def protect_routes():
@@ -648,9 +670,11 @@ def create_app():
             next_url = _safe_next_url(request.args.get("next"))
             if plan:
                 return redirect(url_for("assinar_plano", plan=plan))
-            if next_url:
-                return redirect(next_url)
-            return redirect(url_for("dashboard"))
+            return redirect(_safe_post_auth_destination(next_url))
+        if logged and endpoint in subscription_required_endpoints and not _has_paid_or_trial_access():
+            session["blocked_after_login"] = endpoint
+            flash("Escolha um plano para ativar o sistema.", "info")
+            return redirect(url_for("precos", required="subscription"))
         return None
 
     @app.template_filter("currency")
@@ -1236,7 +1260,7 @@ def create_app():
                 "metadata": {"user_id": str(user["id"]), "business_id": str(business_id), "plan": plan},
             },
             metadata={"user_id": str(user["id"]), "business_id": str(business_id), "plan": plan},
-            success_url=f"{app_url}/dashboard?checkout=success",
+            success_url=f"{app_url}/billing/complete?session_id={{CHECKOUT_SESSION_ID}}",
             cancel_url=f"{app_url}/precos?checkout=cancelled",
         )
         return session_obj
@@ -1258,6 +1282,8 @@ def create_app():
     def precos():
         if request.args.get("checkout") == "cancelled":
             flash("Checkout cancelado. Você pode escolher um plano quando quiser.", "info")
+        if request.args.get("required") == "subscription":
+            flash("A conta foi criada, mas o sistema só libera após escolher um plano.", "info")
         return render_template(
             "precos.html",
             title="Preços | Valora Finance",
@@ -1355,10 +1381,9 @@ Sitemap: {public_site_url()}/sitemap.xml
                 session["business_id"] = membership["business_id"]
             flash("Login realizado.", "success")
             if pending_plan:
+                session["pending_plan"] = pending_plan
                 return redirect(url_for("assinar_plano", plan=pending_plan))
-            if next_url:
-                return redirect(next_url)
-            return redirect(url_for("dashboard"))
+            return redirect(_safe_post_auth_destination(next_url))
         return render_template("login.html", title="Entrar | Valora Finance", email="", selected_plan=selected_plan, next_url=next_url)
 
     @app.route("/cadastro", methods=["GET", "POST"])
@@ -1404,10 +1429,11 @@ Sitemap: {public_site_url()}/sitemap.xml
             session["business_id"] = business_id
             if load_demo:
                 seed_demo_data()
-            flash("Conta criada.", "success")
+            flash("Conta criada. Escolha um plano para ativar o sistema.", "success")
             if selected_plan:
+                session["pending_plan"] = selected_plan
                 return redirect(url_for("assinar_plano", plan=selected_plan))
-            return redirect(url_for("dashboard"))
+            return redirect(url_for("precos", required="subscription"))
         selected_plan = (request.args.get("plan") or "").lower()
         if selected_plan not in {"inicial", "profissional"}:
             selected_plan = ""
@@ -1441,7 +1467,8 @@ Sitemap: {public_site_url()}/sitemap.xml
 
     @app.route("/api/stripe/create-checkout-session", methods=["POST"])
     def create_checkout_session_api():
-        plan = (request.form.get("plan") or (request.json or {}).get("plan") if request.is_json else request.form.get("plan") or "").lower()
+        payload = request.get_json(silent=True) or {}
+        plan = (payload.get("plan") or request.form.get("plan") or "").lower()
         try:
             checkout_session = create_checkout_session_for_plan(plan)
             return jsonify({"url": checkout_session.url})
@@ -1449,6 +1476,54 @@ Sitemap: {public_site_url()}/sitemap.xml
             return jsonify({"error": "Faça login para assinar."}), 401
         except Exception as exc:
             return jsonify({"error": str(exc)}), 400
+
+    @app.route("/billing/complete")
+    def billing_complete():
+        """Finalize checkout synchronously so the dashboard is not opened before access exists."""
+        session_id = request.args.get("session_id")
+        if not session_id:
+            flash("Checkout não confirmado. Escolha um plano novamente.", "error")
+            return redirect(url_for("precos"))
+        if not session.get("user_id") or not session.get("business_id"):
+            flash("Entre novamente para concluir a assinatura.", "info")
+            return redirect(url_for("login", next=request.full_path))
+        stripe = get_stripe_client()
+        if not stripe:
+            flash("Stripe não configurado no servidor.", "error")
+            return redirect(url_for("precos"))
+        try:
+            checkout = stripe.checkout.Session.retrieve(session_id)
+            metadata = checkout.get("metadata") or {}
+            subscription_id = checkout.get("subscription")
+            if str(metadata.get("user_id")) != str(session.get("user_id")) or str(metadata.get("business_id")) != str(session.get("business_id")):
+                flash("Checkout não pertence a esta conta.", "error")
+                return redirect(url_for("precos"))
+            if not subscription_id:
+                flash("Assinatura ainda não encontrada no checkout.", "error")
+                return redirect(url_for("precos"))
+            sub = stripe.Subscription.retrieve(subscription_id)
+            item = sub["items"]["data"][0] if sub["items"]["data"] else {}
+            price = item.get("price") or {}
+            upsert_subscription({
+                "business_id": int(metadata.get("business_id")),
+                "user_id": int(metadata.get("user_id")),
+                "stripe_customer_id": checkout.get("customer"),
+                "stripe_subscription_id": sub.get("id"),
+                "stripe_price_id": price.get("id"),
+                "plan": metadata.get("plan"),
+                "status": sub.get("status"),
+                "current_period_start": timestamp_to_iso(sub.get("current_period_start")),
+                "current_period_end": timestamp_to_iso(sub.get("current_period_end")),
+                "trial_start": timestamp_to_iso(sub.get("trial_start")),
+                "trial_end": timestamp_to_iso(sub.get("trial_end")),
+                "cancel_at_period_end": sub.get("cancel_at_period_end"),
+            })
+            session.pop("pending_plan", None)
+            flash("Assinatura ativada. Sistema liberado.", "success")
+            return redirect(url_for("dashboard"))
+        except Exception as exc:
+            flash(f"Não foi possível confirmar o checkout: {exc}", "error")
+            return redirect(url_for("precos"))
 
     @app.route("/billing/portal", methods=["POST", "GET"])
     def billing_portal():
