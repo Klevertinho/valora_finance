@@ -1,41 +1,37 @@
 {% extends 'public_layout.html' %}
 {% block content %}
-<main class="public-section">
+<main class="public-section pricing-page gso-pricing-page">
   <div class="public-container">
-    <div class="section-title">
-      <span>Planos</span>
-      <h1>Planos da Valora Finance</h1>
-      <p>Escolha um plano para controlar caixa, vendas, estoque e fechamento diário com trial de 7 dias.</p>
+    <div class="section-title compact-title">
+      <span>Plano único</span>
+      <h1>Valora Finance Profissional</h1>
+      <p>Uma assinatura. Tudo liberado. Caixa, vendas, estoque, IA e fechamentos.</p>
     </div>
-    <div class="pricing-grid">
-      <article class="pricing-card">
-        <h2>Inicial</h2>
-        <p>Para sair da planilha.</p>
-        <strong>R$ 39/mês</strong>
+
+    <section class="gso-offer-card standalone-offer">
+      <div>
+        <span class="gso-badge">Oferta de lançamento</span>
+        <h2>Controle seu negócio por menos que uma venda perdida.</h2>
+        <p>Você não paga por “mais um sistema”. Você compra clareza para parar de perder dinheiro no escuro.</p>
         <ul>
-          <li>Controle financeiro</li>
-          <li>Controle de estoque</li>
-          <li>Vendas</li>
-          <li>Alertas básicos</li>
-          <li>Fechamento diário</li>
+          <li>Dashboard financeiro completo</li>
+          <li>Controle de estoque e produtos críticos</li>
+          <li>Vendas, despesas e saldo líquido</li>
+          <li>Insights de IA com prioridades</li>
+          <li>Fechamento diário e mensal</li>
+          <li>PDF personalizado com sua marca</li>
+          <li>Portal para gerenciar a assinatura</li>
         </ul>
-        <a class="btn btn-ghost wide" href="{{ url_for('assinar_plano', plan='inicial') }}">Assinar Inicial</a>
-      </article>
-      <article class="pricing-card highlighted">
-        <span>Mais recomendado</span>
-        <h2>Profissional</h2>
-        <p>Para decidir com relatórios e insights.</p>
-        <strong>R$ 69/mês</strong>
-        <ul>
-          <li>Tudo do Inicial</li>
-          <li>Insights inteligentes</li>
-          <li>Relatórios avançados</li>
-          <li>Histórico de fechamentos</li>
-          <li>Recomendações operacionais</li>
-        </ul>
-        <a class="btn btn-primary wide" href="{{ url_for('assinar_plano', plan='profissional') }}">Assinar Profissional</a>
-      </article>
-    </div>
+      </div>
+      <aside class="gso-price-box">
+        <small>Plano único</small>
+        <strong>R$ 69<span>/mês</span></strong>
+        <a class="btn btn-primary wide" href="{{ url_for('assinar_plano', plan='profissional') }}">Assinar agora</a>
+        <em>Sem fidelidade · Cancele quando quiser</em>
+      </aside>
+    </section>
+
+    <p class="lovable-price-note">Pagamento seguro via Stripe · Liberação automática após assinatura</p>
   </div>
 </main>
 {% endblock %}

@@ -1492,3 +1492,49 @@ select option:hover {
 .readonly-plan-box span{font-size:12px;color:var(--muted);font-weight:800}
 .readonly-plan-box strong{font-size:18px;color:var(--text)}
 .readonly-plan-box small{font-size:12px;color:var(--muted-2)}
+
+/* V12 — Grand Slam Offer + security/persistence polish */
+.gso-page .lovable-section{padding-top:64px;padding-bottom:64px}
+.gso-hero .lovable-hero-copy h1{font-size:clamp(42px,5.4vw,78px);line-height:.93;letter-spacing:-.07em;max-width:760px}
+.gso-hero .lovable-hero-copy p{max-width:650px;font-size:20px;line-height:1.45;color:#d8e2f3}
+.gso-proof-row{display:flex;flex-wrap:wrap;gap:10px;margin:22px 0 0}
+.gso-proof-row span{display:inline-flex;align-items:center;height:36px;padding:0 14px;border-radius:999px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.055);font-weight:900;color:#dbeafe;font-size:13px}
+.gso-dashboard{overflow:hidden}
+.gso-mock-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;padding:16px}
+.gso-mock-grid article{border:1px solid rgba(148,163,184,.16);background:rgba(15,23,42,.72);border-radius:18px;padding:16px;min-height:92px}
+.gso-mock-grid span{display:block;color:#93a4bd;text-transform:uppercase;font-size:11px;font-weight:900;letter-spacing:.08em;margin-bottom:8px}
+.gso-mock-grid strong{display:block;color:#fff;font-size:22px;line-height:1.1;letter-spacing:-.04em}
+.gso-mock-grid small{display:block;margin-top:8px;color:#fde68a;font-weight:800}
+.gso-balance{grid-column:1/-1;background:linear-gradient(135deg,rgba(37,99,235,.28),rgba(212,167,44,.10))!important;min-height:128px!important}
+.gso-balance strong{font-size:46px!important}
+.gso-bars{grid-column:1/-1;min-height:138px!important}
+.gso-bars div{height:80px;display:flex;align-items:flex-end;gap:12px;margin-top:10px}
+.gso-bars i{flex:1;min-height:18px;border-radius:999px 999px 8px 8px;background:linear-gradient(180deg,#60a5fa,#2563eb 70%,#d4a72c);box-shadow:0 12px 32px rgba(37,99,235,.28)}
+.gso-bars i:nth-child(1){height:42%}.gso-bars i:nth-child(2){height:64%}.gso-bars i:nth-child(3){height:48%}.gso-bars i:nth-child(4){height:82%}.gso-bars i:nth-child(5){height:60%}
+.gso-insight{grid-column:1/-1;border-color:rgba(212,167,44,.3)!important;background:linear-gradient(135deg,rgba(212,167,44,.13),rgba(15,23,42,.82))!important;min-height:auto!important}
+.gso-insight strong{font-size:16px!important;color:#fde68a!important}
+.gso-quick-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.gso-quick-grid article{padding:22px;border-radius:24px;border:1px solid rgba(148,163,184,.14);background:linear-gradient(180deg,rgba(255,255,255,.055),rgba(255,255,255,.025));box-shadow:0 20px 54px rgba(0,0,0,.18)}
+.gso-quick-grid b{display:grid;place-items:center;width:40px;height:40px;border-radius:14px;background:rgba(37,99,235,.16);color:#93c5fd;margin-bottom:14px}
+.gso-quick-grid h3,.gso-value-stack strong{margin:0;color:#fff;font-size:19px;letter-spacing:-.04em}
+.gso-quick-grid p,.gso-value-stack span{margin:8px 0 0;color:#9fb0c7;font-weight:650;line-height:1.45}
+.gso-value-stack{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.gso-value-stack div{padding:16px;border-radius:18px;background:rgba(255,255,255,.04);border:1px solid rgba(148,163,184,.12)}
+.gso-offer-card{display:grid;grid-template-columns:minmax(0,1.25fr) 330px;gap:20px;align-items:center;padding:28px;border-radius:30px;border:1px solid rgba(212,167,44,.26);background:radial-gradient(circle at 100% 0%,rgba(212,167,44,.18),transparent 35%),linear-gradient(135deg,rgba(15,23,42,.95),rgba(10,17,31,.98));box-shadow:0 28px 90px rgba(0,0,0,.35)}
+.gso-offer-card h2,.gso-offer-card h3{margin:10px 0 8px;color:#fff;font-size:clamp(28px,4vw,48px);line-height:1;letter-spacing:-.06em}
+.gso-offer-card p{color:#cbd5e1;font-size:16px;max-width:680px}
+.gso-offer-card ul{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:18px 0 0;padding:0;list-style:none}
+.gso-offer-card li{position:relative;padding:10px 12px 10px 34px;border-radius:14px;background:rgba(255,255,255,.045);border:1px solid rgba(148,163,184,.11);font-weight:850;color:#dbeafe}
+.gso-offer-card li:before{content:'✓';position:absolute;left:12px;color:#86efac;font-weight:1000}
+.gso-badge{display:inline-flex;padding:7px 12px;border-radius:999px;background:rgba(212,167,44,.16);color:#f6d773;border:1px solid rgba(212,167,44,.25);font-size:12px;font-weight:1000;text-transform:uppercase;letter-spacing:.08em}
+.gso-price-box{display:grid;gap:12px;justify-items:stretch;padding:22px;border-radius:24px;background:rgba(255,255,255,.055);border:1px solid rgba(255,255,255,.13)}
+.gso-price-box small{color:#94a3b8;font-weight:900;text-transform:uppercase;letter-spacing:.08em}
+.gso-price-box strong{font-size:54px;color:#fff;letter-spacing:-.06em;line-height:1;white-space:nowrap}
+.gso-price-box strong span{font-size:16px;color:#94a3b8;letter-spacing:0}
+.gso-price-box em{font-style:normal;color:#9fb0c7;font-size:12px;font-weight:800;text-align:center}
+.standalone-offer{margin-top:20px}
+.compact-title{text-align:center;max-width:760px;margin:0 auto 20px}
+.compact-faq details p{max-width:760px}
+.plan-badge.inactive{background:rgba(148,163,184,.12);color:#cbd5e1}
+.selectable-plan-link{color:#93c5fd!important;text-decoration:none;font-weight:900}
+@media(max-width:920px){.gso-offer-card{grid-template-columns:1fr}.gso-quick-grid,.gso-value-stack,.gso-offer-card ul{grid-template-columns:1fr}.gso-mock-grid{grid-template-columns:1fr}.gso-hero .lovable-hero-copy h1{font-size:42px}.gso-price-box strong{font-size:44px}}

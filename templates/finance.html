@@ -52,7 +52,8 @@
           <td><span class="chip small">{{ tx.business_category }}</span></td>
           <td>{{ tx.date|date_br }}</td>
           <td class="table-money {{ 'positive' if tx.amount > 0 else 'negative' }}">{{ tx.amount|currency }}</td>
-          <td class="table-action"><form method="post" action="{{ url_for('delete_transaction', item_id=tx.id) }}"><button class="icon-button" type="submit" title="Remover" aria-label="Remover registro">⋯</button></form></td>
+          <td class="table-action"><form method="post" action="{{ url_for('delete_transaction', item_id=tx.id) }}">
+        {{ csrf_field()|safe }}<button class="icon-button" type="submit" title="Remover" aria-label="Remover registro">⋯</button></form></td>
         </tr>
         {% endfor %}
       </tbody></table></div>

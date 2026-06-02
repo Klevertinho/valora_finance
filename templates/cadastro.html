@@ -6,7 +6,8 @@
   <p>Crie sua conta e veja sua empresa com mais clareza.</p>
 </div>
 <form method="post" class="auth-form">
-  <input type="hidden" name="load_demo" value="{{ '1' if load_demo else '0' }}">
+  
+        {{ csrf_field()|safe }}<input type="hidden" name="load_demo" value="{{ '1' if load_demo else '0' }}">
   <input type="hidden" name="plan" value="{{ selected_plan or '' }}">
   <label>Nome<input name="full_name" value="{{ form.full_name or '' }}" placeholder="Seu nome" required></label>
   <label>Email<input type="email" name="email" value="{{ form.email or '' }}" placeholder="seu@email.com" required></label>

@@ -6,10 +6,11 @@
   <p>Entre para continuar gerindo seu negócio.</p>
 </div>
 {% if selected_plan %}
-<div class="demo-login-note plan-login-note">Plano selecionado: <b>{{ 'Profissional' if selected_plan == 'profissional' else 'Inicial' }}</b>. Entre para concluir a assinatura.</div>
+<div class="demo-login-note plan-login-note">Plano selecionado: <b>Profissional</b>. Entre para concluir a assinatura.</div>
 {% endif %}
 <form method="post" class="auth-form">
-  <input type="hidden" name="plan" value="{{ selected_plan or '' }}">
+  
+        {{ csrf_field()|safe }}<input type="hidden" name="plan" value="{{ selected_plan or '' }}">
   <label>Email<input type="email" name="email" value="{{ email or '' }}" placeholder="seu@email.com" required></label>
   <label>Senha<input type="password" name="password" placeholder="Sua senha" required></label>
   <button class="btn btn-primary wide" type="submit">{{ 'Entrar e assinar' if selected_plan else 'Entrar' }}</button>

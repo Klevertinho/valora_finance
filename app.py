@@ -2,6 +2,8 @@ import os
 import sqlite3
 import re
 import json
+import time
+import secrets
 from functools import wraps
 from io import BytesIO
 from datetime import datetime, timedelta
@@ -532,6 +534,13 @@ def get_db_connection(db_path: str):
 def create_app():
     app = Flask(__name__)
     app.secret_key = os.environ.get("FLASK_SECRET_KEY", "valora-finance-local-dev-secret")
+    app.config.update(
+        SESSION_COOKIE_HTTPONLY=True,
+        SESSION_COOKIE_SAMESITE="Lax",
+        SESSION_COOKIE_SECURE=bool(os.environ.get("RENDER") or os.environ.get("VALORA_FORCE_HTTPS")),
+        PERMANENT_SESSION_LIFETIME=timedelta(hours=12),
+        MAX_CONTENT_LENGTH=2 * 1024 * 1024,
+    )
     database_url = os.environ.get("DATABASE_URL")
     running_on_render = bool(os.environ.get("RENDER") or os.environ.get("RENDER_SERVICE_ID") or os.environ.get("PORT"))
     if running_on_render and not database_url:
@@ -636,8 +645,15 @@ def create_app():
         return None
 
     def _valid_plan(value):
-        plan = (value or "").lower()
-        return plan if plan in {"inicial", "profissional"} else ""
+        """Canonical commercial offer: a single complete plan.
+
+        Legacy links for /assinar/inicial are accepted, but they are upgraded
+        to the unique Professional plan so there is only one sellable offer.
+        """
+        plan = (value or "").strip().lower()
+        if plan in {"inicial", "profissional", "professional", "unico", "único"}:
+            return "profissional"
+        return ""
 
     def _has_paid_or_trial_access():
         """Only Stripe/webhook-created active or trialing subscriptions unlock the app.
@@ -689,6 +705,70 @@ def create_app():
             flash("Escolha um plano para ativar o sistema.", "info")
             return redirect(url_for("precos", required="subscription"))
         return None
+
+
+    # -------------------------
+    # Segurança básica de produção
+    # -------------------------
+    _rate_limit_bucket = {}
+
+    def _client_ip():
+        forwarded = request.headers.get("X-Forwarded-For", "")
+        return (forwarded.split(",")[0].strip() or request.remote_addr or "unknown")
+
+    def _rate_limited(key, limit=20, window=300):
+        now_ts = time.time()
+        bucket_key = f"{key}:{_client_ip()}"
+        attempts = [ts for ts in _rate_limit_bucket.get(bucket_key, []) if now_ts - ts < window]
+        if len(attempts) >= limit:
+            _rate_limit_bucket[bucket_key] = attempts
+            return True
+        attempts.append(now_ts)
+        _rate_limit_bucket[bucket_key] = attempts
+        return False
+
+    def csrf_token():
+        token = session.get("csrf_token")
+        if not token:
+            token = secrets.token_urlsafe(32)
+            session["csrf_token"] = token
+        return token
+
+    def csrf_field():
+        return f'<input type="hidden" name="csrf_token" value="{csrf_token()}">' 
+
+    @app.context_processor
+    def inject_security_helpers():
+        return {"csrf_token": csrf_token, "csrf_field": csrf_field}
+
+    @app.before_request
+    def security_guards():
+        endpoint = request.endpoint or ""
+        if request.method == "POST" and endpoint != "stripe_webhook":
+            sent = request.form.get("csrf_token") or (request.get_json(silent=True) or {}).get("csrf_token")
+            if not sent or sent != session.get("csrf_token"):
+                flash("Sessão expirada. Recarregue a página e tente novamente.", "error")
+                return redirect(request.referrer or url_for("login"))
+        if endpoint == "login" and request.method == "POST" and _rate_limited("login", limit=12, window=300):
+            flash("Muitas tentativas de login. Aguarde alguns minutos e tente novamente.", "error")
+            return redirect(url_for("login"))
+        if endpoint == "cadastro" and request.method == "POST" and _rate_limited("cadastro", limit=8, window=300):
+            flash("Muitas tentativas de cadastro. Aguarde alguns minutos e tente novamente.", "error")
+            return redirect(url_for("cadastro"))
+
+    @app.after_request
+    def apply_security_headers(response):
+        response.headers.setdefault("X-Content-Type-Options", "nosniff")
+        response.headers.setdefault("X-Frame-Options", "SAMEORIGIN")
+        response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+        response.headers.setdefault("Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=()")
+        response.headers.setdefault("Cross-Origin-Opener-Policy", "same-origin")
+        if request.endpoint not in {"landing", "precos", "termos", "privacidade", "robots_txt", "sitemap_xml", "static"}:
+            response.headers.setdefault("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
+            response.headers.setdefault("Pragma", "no-cache")
+        if request.scheme == "https" or os.environ.get("VALORA_FORCE_HTTPS"):
+            response.headers.setdefault("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+        return response
 
     @app.template_filter("currency")
     def currency(value):
@@ -1139,13 +1219,13 @@ def create_app():
         ).rstrip("/")
 
     def stripe_price_map():
+        professional_price = os.getenv("STRIPE_PRICE_PROFISSIONAL_MONTHLY") or os.getenv("STRIPE_PRICE_INICIAL_MONTHLY")
         return {
-            "inicial": os.getenv("STRIPE_PRICE_INICIAL_MONTHLY"),
-            "profissional": os.getenv("STRIPE_PRICE_PROFISSIONAL_MONTHLY"),
+            "profissional": professional_price,
         }
 
     def plan_label(plan):
-        return {"inicial": "Inicial", "profissional": "Profissional"}.get(plan, "Sem assinatura")
+        return {"profissional": "Profissional"}.get(plan, "Sem assinatura")
 
     def get_stripe_client():
         secret_key = os.getenv("STRIPE_SECRET_KEY")
@@ -1299,7 +1379,7 @@ def create_app():
                     price_id = _first_subscription_price_id(sub)
                     metadata = _stripe_obj_get(sub, "metadata", {}) or {}
                     plan = _stripe_obj_get(metadata, "plan") or price_to_plan.get(price_id)
-                    if plan not in {"inicial", "profissional"}:
+                    if plan != "profissional":
                         continue
                     upsert_subscription({
                         "business_id": int(business_id),
@@ -1324,8 +1404,8 @@ def create_app():
     def create_checkout_session_for_plan(plan):
         plan = (plan or "").lower()
         price_id = stripe_price_map().get(plan)
-        if plan not in {"inicial", "profissional"} or not price_id:
-            raise ValueError("Plano inválido ou STRIPE_PRICE do plano ausente.")
+        if plan != "profissional" or not price_id:
+            raise ValueError("Plano inválido ou STRIPE_PRICE_PROFISSIONAL_MONTHLY ausente.")
         stripe = get_stripe_client()
         if not stripe:
             raise RuntimeError("Stripe não configurado. Verifique STRIPE_SECRET_KEY e a dependência stripe.")
@@ -1440,6 +1520,7 @@ Sitemap: {public_site_url()}/sitemap.xml
             "users_count": users_count,
             "subscriptions_count": subscriptions_count,
             "stripe_configured": bool(os.getenv("STRIPE_SECRET_KEY")),
+            "database_url_present": bool(os.getenv("DATABASE_URL")),
             "app_url": get_app_url(),
         })
 
@@ -1486,9 +1567,7 @@ Sitemap: {public_site_url()}/sitemap.xml
             business_name = request.form.get("business_name", "").strip()
             business_type = request.form.get("business_type", "")
             load_demo = request.form.get("load_demo") == "1"
-            selected_plan = (request.form.get("plan") or "").lower()
-            if selected_plan not in {"", "inicial", "profissional"}:
-                selected_plan = ""
+            selected_plan = _valid_plan(request.form.get("plan") or "")
             if not full_name or not business_name or business_type not in business_types:
                 flash("Preencha nome, empresa e tipo de negócio.", "error")
                 return render_template("cadastro.html", title="Criar conta | Valora Finance", business_types=business_types, form=request.form, selected_plan=selected_plan)
@@ -1524,9 +1603,7 @@ Sitemap: {public_site_url()}/sitemap.xml
                 session["pending_plan"] = selected_plan
                 return redirect(url_for("assinar_plano", plan=selected_plan))
             return redirect(url_for("precos", required="subscription"))
-        selected_plan = (request.args.get("plan") or "").lower()
-        if selected_plan not in {"inicial", "profissional"}:
-            selected_plan = ""
+        selected_plan = _valid_plan(request.args.get("plan") or "")
         return render_template("cadastro.html", title="Criar conta | Valora Finance", business_types=business_types, form={}, load_demo=request.args.get("demo") == "true", selected_plan=selected_plan)
 
     @app.route("/recuperar-senha", methods=["GET", "POST"])
@@ -1541,8 +1618,9 @@ Sitemap: {public_site_url()}/sitemap.xml
     def assinar_plano(plan):
         """Public-safe entrypoint for pricing CTAs."""
         plan = (plan or "").lower()
-        if plan not in {"inicial", "profissional"}:
-            flash("Plano inválido.", "error")
+        plan = _valid_plan(plan)
+        if plan != "profissional":
+            flash("Escolha o plano Profissional para ativar a Valora Finance.", "error")
             return redirect(url_for("precos"))
         if not session.get("user_id"):
             session["pending_plan"] = plan
@@ -1558,7 +1636,7 @@ Sitemap: {public_site_url()}/sitemap.xml
     @app.route("/api/stripe/create-checkout-session", methods=["POST"])
     def create_checkout_session_api():
         payload = request.get_json(silent=True) or {}
-        plan = (payload.get("plan") or request.form.get("plan") or "").lower()
+        plan = _valid_plan(payload.get("plan") or request.form.get("plan") or "profissional")
         try:
             checkout_session = create_checkout_session_for_plan(plan)
             return jsonify({"url": checkout_session.url})

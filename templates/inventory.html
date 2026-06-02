@@ -54,20 +54,23 @@
               <td><span class="badge {{ 'danger' if item.status == 'critico' else 'warning' if item.status == 'atencao' else 'success' }}">{{ 'Crítico' if item.status == 'critico' else 'Atenção' if item.status == 'atencao' else 'Saudável' }}</span></td>
               <td class="actions-cell simpler-actions">
                 <form method="post" action="{{ url_for('estoque') }}">
-                  <input type="hidden" name="action" value="sell"><input type="hidden" name="item_id" value="{{ item.id }}"><input type="hidden" name="sell_quantity" value="1">
+                  
+        {{ csrf_field()|safe }}<input type="hidden" name="action" value="sell"><input type="hidden" name="item_id" value="{{ item.id }}"><input type="hidden" name="sell_quantity" value="1">
                   <button class="mini-btn primary" type="submit">Vender</button>
                 </form>
                 <details class="row-drawer more-menu">
                   <summary>Mais</summary>
                   <div class="menu-card">
                     <form method="post" action="{{ url_for('estoque') }}" class="menu-form">
-                      <input type="hidden" name="action" value="restock"><input type="hidden" name="item_id" value="{{ item.id }}">
+                      
+        {{ csrf_field()|safe }}<input type="hidden" name="action" value="restock"><input type="hidden" name="item_id" value="{{ item.id }}">
                       <label>Qtd.<input name="restock_quantity" type="number" min="1" value="1"></label>
                       <label>Custo total<input name="restock_cost" type="number" step="0.01" value="0"></label>
                       <button class="mini-btn" type="submit">Repor</button>
                     </form>
                     <form method="post" action="{{ url_for('delete_item', item_id=item.id) }}">
-                      <button class="mini-btn danger" type="submit">Excluir</button>
+                      
+        {{ csrf_field()|safe }}<button class="mini-btn danger" type="submit">Excluir</button>
                     </form>
                   </div>
                 </details>

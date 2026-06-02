@@ -23,7 +23,8 @@
     <div class="card-head compact-head">
       <div><h3>Fechamento do dia</h3><p>Resumo do desempenho de hoje</p></div>
       <div class="report-actions">
-        <form method="post" action="{{ url_for('close_day') }}"><button class="btn btn-primary" type="submit">Fechar dia</button></form>
+        <form method="post" action="{{ url_for('close_day') }}">
+        {{ csrf_field()|safe }}<button class="btn btn-primary" type="submit">Fechar dia</button></form>
         <a class="btn btn-secondary" href="{{ url_for('download_report_pdf') }}">Baixar PDF diário</a>
       </div>
     </div>
@@ -39,7 +40,8 @@
     <div class="card-head compact-head">
       <div><h3>Fechamento do mês</h3><p>Resumo executivo do mês atual com insights.</p></div>
       <div class="report-actions">
-        <form method="post" action="{{ url_for('close_month') }}"><button class="btn btn-primary" type="submit">Fechar mês</button></form>
+        <form method="post" action="{{ url_for('close_month') }}">
+        {{ csrf_field()|safe }}<button class="btn btn-primary" type="submit">Fechar mês</button></form>
         <a class="btn btn-secondary" href="{{ url_for('download_month_report_pdf') }}">Baixar PDF mensal</a>
       </div>
     </div>
