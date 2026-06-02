@@ -16,6 +16,10 @@ BRAND_NAME = "Valora Finance"
 BRAND_TAGLINE = "Gestão inteligente"
 
 
+def is_production_env() -> bool:
+    return os.environ.get("APP_ENV", "").lower() == "production" or bool(os.environ.get("RENDER") or os.environ.get("RENDER_SERVICE_ID"))
+
+
 APP_TABLES = {
     "transactions": "vf_transactions",
     "items": "vf_items",
@@ -247,6 +251,13 @@ def init_postgres_db(dsn: str) -> None:
             updated_at TEXT NOT NULL
         )
         """,
+        """
+        CREATE TABLE IF NOT EXISTS vf_stripe_events (
+            id TEXT PRIMARY KEY,
+            type TEXT,
+            processed_at TEXT NOT NULL
+        )
+        """,
         "CREATE INDEX IF NOT EXISTS idx_vf_transactions_business ON vf_transactions(business_id)",
         "CREATE INDEX IF NOT EXISTS idx_vf_items_business ON vf_items(business_id)",
         "CREATE INDEX IF NOT EXISTS idx_vf_subscriptions_business ON vf_subscriptions(business_id)",
@@ -475,6 +486,15 @@ def init_db(db_path: str) -> None:
         )
         """
     )
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS stripe_events (
+            id TEXT PRIMARY KEY,
+            type TEXT,
+            processed_at TEXT NOT NULL
+        )
+        """
+    )
 
     # Corrige contas antigas que nasceram como "Profissional" sem assinatura real.
     # Plano comercial passa a ser derivado da tabela subscriptions/webhook Stripe.
@@ -533,6 +553,8 @@ def get_db_connection(db_path: str):
 
 def create_app():
     app = Flask(__name__)
+    if is_production_env() and not os.environ.get("FLASK_SECRET_KEY"):
+        raise RuntimeError("FLASK_SECRET_KEY ausente em produção.")
     app.secret_key = os.environ.get("FLASK_SECRET_KEY", "valora-finance-local-dev-secret")
     app.config.update(
         SESSION_COOKIE_HTTPONLY=True,
@@ -542,7 +564,7 @@ def create_app():
         MAX_CONTENT_LENGTH=2 * 1024 * 1024,
     )
     database_url = os.environ.get("DATABASE_URL")
-    running_on_render = bool(os.environ.get("RENDER") or os.environ.get("RENDER_SERVICE_ID") or os.environ.get("PORT"))
+    running_on_render = is_production_env() or bool(os.environ.get("PORT"))
     if running_on_render and not database_url:
         raise RuntimeError("DATABASE_URL ausente em produção. Configure a connection string do Neon/Postgres no Render para evitar perda de contas.")
     db_path = database_url or os.environ.get("VALORA_DATABASE_PATH") or os.path.join(os.path.dirname(__file__), "data.db")
@@ -758,15 +780,29 @@ def create_app():
 
     @app.after_request
     def apply_security_headers(response):
+        csp = (
+            "default-src 'self'; "
+            "base-uri 'self'; "
+            "object-src 'none'; "
+            "frame-ancestors 'self'; "
+            "script-src 'self' 'unsafe-inline' https://js.stripe.com; "
+            "style-src 'self' 'unsafe-inline'; "
+            "img-src 'self' data: blob: https:; "
+            "font-src 'self' data: https:; "
+            "connect-src 'self' https://api.stripe.com https://*.stripe.com; "
+            "frame-src 'self' https://js.stripe.com https://checkout.stripe.com https://hooks.stripe.com; "
+            "form-action 'self' https://checkout.stripe.com"
+        )
+        response.headers.setdefault("Content-Security-Policy", csp)
         response.headers.setdefault("X-Content-Type-Options", "nosniff")
         response.headers.setdefault("X-Frame-Options", "SAMEORIGIN")
         response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
-        response.headers.setdefault("Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=()")
+        response.headers.setdefault("Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=(self)")
         response.headers.setdefault("Cross-Origin-Opener-Policy", "same-origin")
         if request.endpoint not in {"landing", "precos", "termos", "privacidade", "robots_txt", "sitemap_xml", "static"}:
             response.headers.setdefault("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
             response.headers.setdefault("Pragma", "no-cache")
-        if request.scheme == "https" or os.environ.get("VALORA_FORCE_HTTPS"):
+        if request.scheme == "https" or os.environ.get("VALORA_FORCE_HTTPS") or is_production_env():
             response.headers.setdefault("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
         return response
 
@@ -1208,7 +1244,7 @@ def create_app():
 
     def get_app_url() -> str:
         """Return the production application URL used in Stripe redirects and SEO."""
-        return (
+        url = (
             os.getenv("VALORA_APP_URL")
             or os.getenv("APP_URL")
             or os.getenv("SITE_URL")
@@ -1217,6 +1253,9 @@ def create_app():
             or os.getenv("NEXT_PUBLIC_SITE_URL")
             or request.host_url.rstrip("/")
         ).rstrip("/")
+        if is_production_env() and "localhost" in url:
+            raise RuntimeError("APP_URL/SITE_URL não pode apontar para localhost em produção.")
+        return url
 
     def stripe_price_map():
         professional_price = os.getenv("STRIPE_PRICE_PROFISSIONAL_MONTHLY") or os.getenv("STRIPE_PRICE_INICIAL_MONTHLY")
@@ -1521,6 +1560,7 @@ Sitemap: {public_site_url()}/sitemap.xml
             "subscriptions_count": subscriptions_count,
             "stripe_configured": bool(os.getenv("STRIPE_SECRET_KEY")),
             "database_url_present": bool(os.getenv("DATABASE_URL")),
+            "app_env": os.getenv("APP_ENV", "development"),
             "app_url": get_app_url(),
         })
 
@@ -1617,6 +1657,9 @@ Sitemap: {public_site_url()}/sitemap.xml
     @app.route("/assinar/<plan>")
     def assinar_plano(plan):
         """Public-safe entrypoint for pricing CTAs."""
+        if _rate_limited("checkout", limit=12, window=300):
+            flash("Muitas tentativas de assinatura. Aguarde alguns minutos e tente novamente.", "error")
+            return redirect(url_for("precos"))
         plan = (plan or "").lower()
         plan = _valid_plan(plan)
         if plan != "profissional":
@@ -1635,6 +1678,8 @@ Sitemap: {public_site_url()}/sitemap.xml
 
     @app.route("/api/stripe/create-checkout-session", methods=["POST"])
     def create_checkout_session_api():
+        if _rate_limited("checkout_api", limit=12, window=300):
+            return jsonify({"error": "Muitas tentativas de checkout. Aguarde alguns minutos."}), 429
         payload = request.get_json(silent=True) or {}
         plan = _valid_plan(payload.get("plan") or request.form.get("plan") or "profissional")
         try:
@@ -1709,6 +1754,29 @@ Sitemap: {public_site_url()}/sitemap.xml
         )
         return redirect(portal.url)
 
+    def stripe_event_already_processed(event_id: str) -> bool:
+        if not event_id:
+            return False
+        conn = get_db_connection(db_path)
+        try:
+            row = conn.execute("SELECT id FROM stripe_events WHERE id = ?", (event_id,)).fetchone()
+            return bool(row)
+        finally:
+            conn.close()
+
+    def mark_stripe_event_processed(event_id: str, event_type: str) -> None:
+        if not event_id:
+            return
+        conn = get_db_connection(db_path)
+        try:
+            conn.execute(
+                "INSERT INTO stripe_events (id, type, processed_at) VALUES (?, ?, ?) ON CONFLICT(id) DO NOTHING",
+                (event_id, event_type, datetime.now().isoformat(timespec="seconds")),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
     @app.route("/api/stripe/webhook", methods=["POST"])
     def stripe_webhook():
         stripe = get_stripe_client()
@@ -1721,15 +1789,20 @@ Sitemap: {public_site_url()}/sitemap.xml
             return jsonify({"error": "Missing Stripe signature."}), 400
         try:
             event = stripe.Webhook.construct_event(payload, signature, webhook_secret)
-        except Exception as exc:
-            return jsonify({"error": f"Invalid signature: {exc}"}), 400
+        except Exception:
+            return jsonify({"error": "Invalid Stripe signature."}), 400
+
+        event_id = event.get("id")
+        event_type = event.get("type")
+        if event_id and stripe_event_already_processed(event_id):
+            return jsonify({"received": True, "duplicate": True})
 
         try:
             if event["type"] == "checkout.session.completed":
                 checkout = event["data"]["object"]
                 metadata = checkout.get("metadata") or {}
                 subscription_id = checkout.get("subscription")
-                if subscription_id:
+                if subscription_id and metadata.get("business_id") and metadata.get("user_id"):
                     sub = stripe.Subscription.retrieve(subscription_id)
                     item = sub["items"]["data"][0] if sub["items"]["data"] else {}
                     price = item.get("price") or {}
@@ -1767,9 +1840,10 @@ Sitemap: {public_site_url()}/sitemap.xml
                         "trial_end": timestamp_to_iso(sub.get("trial_end")),
                         "cancel_at_period_end": sub.get("cancel_at_period_end"),
                     })
+            mark_stripe_event_processed(event_id, event_type or "unknown")
             return jsonify({"received": True})
-        except Exception as exc:
-            return jsonify({"error": f"Webhook handler failed: {exc}"}), 500
+        except Exception:
+            return jsonify({"error": "Webhook handler failed."}), 500
 
     @app.route("/logout")
     def logout():
@@ -2307,4 +2381,4 @@ app = create_app()
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8000))
-    app.run(debug=os.environ.get("FLASK_DEBUG") == "1", host="0.0.0.0", port=port)
+    app.run(debug=(os.environ.get("FLASK_DEBUG") == "1" and not is_production_env()), host="0.0.0.0", port=port)  # nosec B104 - servidor dev; produção usa gunicorn

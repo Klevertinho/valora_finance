@@ -1,6 +1,6 @@
 # Deploy da Valora Finance em produção
 
-Stack atual: Flask + Postgres/Supabase em produção via `DATABASE_URL`, SQLite apenas como fallback local + Jinja + CSS puro + Stripe server-side. Para produção real, use Render/Railway/Fly.io ou VPS. Vercel não é a melhor opção para este projeto porque a aplicação é Flask persistente, não Next.js.
+Stack atual: Flask + Postgres/Neon em produção via `DATABASE_URL`, SQLite apenas como fallback local + Jinja + CSS puro + Stripe server-side. Para produção real, use Render/Railway/Fly.io ou VPS. Vercel não é a melhor opção para este projeto porque a aplicação é Flask persistente, não Next.js.
 
 ## 1. Variáveis de ambiente obrigatórias
 
@@ -8,15 +8,14 @@ Configure no painel da plataforma:
 
 ```env
 FLASK_SECRET_KEY=um_secret_forte
-DATABASE_URL=postgresql://postgres.xxxxx:SENHA@aws-0-xxxx.pooler.supabase.com:6543/postgres?sslmode=require
+DATABASE_URL=postgresql://usuario:senha@host.neon.tech/database?sslmode=require
 VALORA_APP_URL=https://sua-url-de-producao.com
 VALORA_SITE_URL=https://sua-url-de-producao.com
 SITE_URL=https://sua-url-de-producao.com
 
-STRIPE_SECRET_KEY=sk_test_ou_sk_live
-STRIPE_WEBHOOK_SECRET=whsec_...
-STRIPE_TRIAL_DAYS=7
-STRIPE_PRICE_INICIAL_MONTHLY=price_...
+STRIPE_SECRET_KEY=sua_chave_secret_stripe
+STRIPE_WEBHOOK_SECRET=seu_webhook_secret
+STRIPE_TRIAL_DAYS=0
 STRIPE_PRICE_PROFISSIONAL_MONTHLY=price_...
 
 SUPABASE_URL=https://xxx.supabase.co
@@ -49,7 +48,7 @@ gunicorn 'app:create_app()' --bind 0.0.0.0:$PORT
 9. Atualize `VALORA_APP_URL`, `VALORA_SITE_URL` e `SITE_URL` com a URL final.
 10. Redeploy.
 
-## 3. Supabase/Postgres
+## 3. Neon/Postgres
 
 1. Crie um projeto Supabase.
 2. Vá em Connect > Direct > selecione **Transaction Pooler** > Type **URI**.
@@ -73,7 +72,6 @@ No Stripe, crie:
 - Nome: Valora Finance Inicial
 - Preço: R$ 39/mês
 - Tipo: recorrente mensal
-- Copie o `price_...` para `STRIPE_PRICE_INICIAL_MONTHLY`.
 
 ### Produto 2
 - Nome: Valora Finance Profissional
