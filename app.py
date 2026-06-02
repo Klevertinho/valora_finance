@@ -640,11 +640,22 @@ def create_app():
         return plan if plan in {"inicial", "profissional"} else ""
 
     def _has_paid_or_trial_access():
-        """Only Stripe/webhook-created active or trialing subscriptions unlock the app."""
+        """Only Stripe/webhook-created active or trialing subscriptions unlock the app.
+
+        If the webhook failed or arrived late, we try one Stripe sync per session by
+        customer email before blocking the user. This prevents a paying customer
+        from being trapped on the pricing page.
+        """
         if not session.get("user_id") or not session.get("business_id"):
             return False
         try:
-            return bool(subscription_access(get_subscription_for_business()).get("has_access"))
+            if bool(subscription_access(get_subscription_for_business()).get("has_access")):
+                return True
+            if not session.get("stripe_subscription_sync_attempted"):
+                session["stripe_subscription_sync_attempted"] = True
+                if sync_subscription_from_stripe_for_current_user():
+                    return bool(subscription_access(get_subscription_for_business()).get("has_access"))
+            return False
         except Exception:
             return False
 
@@ -666,10 +677,12 @@ def create_app():
             next_url = request.full_path if request.query_string else request.path
             return redirect(url_for("login", next=next_url))
         if endpoint in auth_endpoints and logged:
-            plan = _valid_plan(request.args.get("plan") or session.get("pending_plan"))
+            plan = _valid_plan(request.args.get("plan"))
             next_url = _safe_next_url(request.args.get("next"))
             if plan:
+                session["pending_plan"] = plan
                 return redirect(url_for("assinar_plano", plan=plan))
+            session.pop("pending_plan", None)
             return redirect(_safe_post_auth_destination(next_url))
         if logged and endpoint in subscription_required_endpoints and not _has_paid_or_trial_access():
             session["blocked_after_login"] = endpoint
@@ -1238,6 +1251,76 @@ def create_app():
             "current_period_end": subscription["current_period_end"] if subscription else None,
         }
 
+    def _stripe_obj_get(obj, key, default=None):
+        try:
+            if isinstance(obj, dict):
+                return obj.get(key, default)
+            return getattr(obj, key, default)
+        except Exception:
+            return default
+
+    def _first_subscription_price_id(subscription):
+        try:
+            items = _stripe_obj_get(subscription, "items", {})
+            data = _stripe_obj_get(items, "data", []) or []
+            if not data:
+                return None
+            first = data[0]
+            price = _stripe_obj_get(first, "price", {})
+            return _stripe_obj_get(price, "id")
+        except Exception:
+            return None
+
+    def sync_subscription_from_stripe_for_current_user():
+        """Recover access for users who paid but whose webhook was not saved.
+
+        This searches Stripe customers by the logged-in email, finds an active/trialing
+        subscription, maps its price ID back to our plan, and writes it to the local DB.
+        """
+        user = current_user()
+        business_id = current_business_id()
+        if not user or not business_id:
+            return False
+        stripe = get_stripe_client()
+        if not stripe:
+            return False
+        price_to_plan = {v: k for k, v in stripe_price_map().items() if v}
+        try:
+            customers = stripe.Customer.list(email=user["email"], limit=10)
+            for customer in (_stripe_obj_get(customers, "data", []) or []):
+                customer_id = _stripe_obj_get(customer, "id")
+                if not customer_id:
+                    continue
+                subscriptions = stripe.Subscription.list(customer=customer_id, status="all", limit=10)
+                for sub in (_stripe_obj_get(subscriptions, "data", []) or []):
+                    status = _stripe_obj_get(sub, "status")
+                    if status not in {"active", "trialing"}:
+                        continue
+                    price_id = _first_subscription_price_id(sub)
+                    metadata = _stripe_obj_get(sub, "metadata", {}) or {}
+                    plan = _stripe_obj_get(metadata, "plan") or price_to_plan.get(price_id)
+                    if plan not in {"inicial", "profissional"}:
+                        continue
+                    upsert_subscription({
+                        "business_id": int(business_id),
+                        "user_id": int(user["id"]),
+                        "stripe_customer_id": customer_id,
+                        "stripe_subscription_id": _stripe_obj_get(sub, "id"),
+                        "stripe_price_id": price_id,
+                        "plan": plan,
+                        "status": status,
+                        "current_period_start": timestamp_to_iso(_stripe_obj_get(sub, "current_period_start")),
+                        "current_period_end": timestamp_to_iso(_stripe_obj_get(sub, "current_period_end")),
+                        "trial_start": timestamp_to_iso(_stripe_obj_get(sub, "trial_start")),
+                        "trial_end": timestamp_to_iso(_stripe_obj_get(sub, "trial_end")),
+                        "cancel_at_period_end": _stripe_obj_get(sub, "cancel_at_period_end"),
+                    })
+                    return True
+        except Exception as exc:
+            print("Stripe subscription sync failed:", exc)
+            return False
+        return False
+
     def create_checkout_session_for_plan(plan):
         plan = (plan or "").lower()
         price_id = stripe_price_map().get(plan)
@@ -1362,7 +1445,11 @@ Sitemap: {public_site_url()}/sitemap.xml
 
     @app.route("/login", methods=["GET", "POST"])
     def login():
-        selected_plan = _valid_plan(request.form.get("plan") or request.args.get("plan") or session.get("pending_plan"))
+        arg_plan = _valid_plan(request.args.get("plan"))
+        if request.method == "GET" and not arg_plan:
+            # Clicking the normal header/login button must not inherit an old pricing intent.
+            session.pop("pending_plan", None)
+        selected_plan = _valid_plan(request.form.get("plan") or arg_plan or session.get("pending_plan"))
         next_url = _safe_next_url(request.args.get("next"))
         if request.method == "POST":
             email = request.form.get("email", "").strip().lower()
@@ -1380,6 +1467,9 @@ Sitemap: {public_site_url()}/sitemap.xml
             if membership:
                 session["business_id"] = membership["business_id"]
             flash("Login realizado.", "success")
+            # If the customer already paid but the webhook was missed, recover access now.
+            session.pop("stripe_subscription_sync_attempted", None)
+            sync_subscription_from_stripe_for_current_user()
             if pending_plan:
                 session["pending_plan"] = pending_plan
                 return redirect(url_for("assinar_plano", plan=pending_plan))
