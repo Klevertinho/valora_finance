@@ -7,7 +7,7 @@
     <h2>Veja o sistema com dados prontos.</h2>
     <p>Carregue uma base de demonstração para entender a proposta do produto antes de começar os cadastros.</p>
     <div class="empty-actions">
-      <a class="btn btn-gold" href="{{ url_for('load_demo_data') }}">Ver demonstração</a>
+      <form class="inline-demo-form" method="post" action="{{ url_for('load_demo_data') }}">{{ csrf_field()|safe }}<button class="btn btn-gold" type="submit">Ver demonstração</button></form>
       <a class="btn btn-ghost" href="#nova-movimentacao">Começar do zero</a>
     </div>
   </div>

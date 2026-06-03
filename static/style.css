@@ -1538,3 +1538,11 @@ select option:hover {
 .plan-badge.inactive{background:rgba(148,163,184,.12);color:#cbd5e1}
 .selectable-plan-link{color:#93c5fd!important;text-decoration:none;font-weight:900}
 @media(max-width:920px){.gso-offer-card{grid-template-columns:1fr}.gso-quick-grid,.gso-value-stack,.gso-offer-card ul{grid-template-columns:1fr}.gso-mock-grid{grid-template-columns:1fr}.gso-hero .lovable-hero-copy h1{font-size:42px}.gso-price-box strong{font-size:44px}}
+
+/* v14 refinements: secure POST actions without visual regression */
+.topbar-action-form,
+.inline-demo-form{display:inline-flex;margin:0;padding:0}
+.topbar-action-form .btn,
+.inline-demo-form .btn{border:0}
+.sidebar-account .selectable-plan-link{color:#93c5fd;font-weight:800}
+.flash{max-width:min(92vw,560px)}

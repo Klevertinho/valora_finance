@@ -516,28 +516,30 @@ def init_db(db_path: str) -> None:
     for table in ["transactions", "items", "closings", "month_closings"]:
         ensure_column(table, "business_id", "INTEGER DEFAULT 1")
 
-    # Create a local demo account so the product can be tested immediately.
+    # Conta demo só é criada quando explicitamente habilitada.
+    # Em produção, não criar usuário demo automaticamente.
     now = datetime.now().isoformat(timespec="minutes")
-    demo = cur.execute("SELECT id FROM users WHERE email = ?", ("demo@valora.local",)).fetchone()
-    if not demo:
-        cur.execute(
-            "INSERT INTO users (full_name, email, password_hash, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
-            ("Usuário Demo", "demo@valora.local", generate_password_hash("demo1234"), now, now),
-        )
-        user_id = cur.lastrowid
-        cur.execute(
-            "INSERT INTO businesses (name, type, owner_user_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
-            ("Empresa demo", "Salão de beleza", user_id, now, now),
-        )
-        business_id = cur.lastrowid
-        cur.execute(
-            "INSERT INTO business_members (business_id, user_id, role, created_at) VALUES (?, ?, ?, ?)",
-            (business_id, user_id, "owner", now),
-        )
-        cur.execute(
-            "INSERT INTO business_settings (business_id, company_name, business_type, plan, visual_preference, demo_loaded, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-            (business_id, "Empresa demo", "Salão de beleza", "Sem assinatura", "Graphite Premium", 0, now, now),
-        )
+    if os.environ.get("ENABLE_DEMO_ACCOUNT", "0") == "1":
+        demo = cur.execute("SELECT id FROM users WHERE email = ?", ("demo@valora.local",)).fetchone()
+        if not demo:
+            cur.execute(
+                "INSERT INTO users (full_name, email, password_hash, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
+                ("Usuário Demo", "demo@valora.local", generate_password_hash("demo1234"), now, now),
+            )
+            user_id = cur.lastrowid
+            cur.execute(
+                "INSERT INTO businesses (name, type, owner_user_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
+                ("Empresa demo", "Salão de beleza", user_id, now, now),
+            )
+            business_id = cur.lastrowid
+            cur.execute(
+                "INSERT INTO business_members (business_id, user_id, role, created_at) VALUES (?, ?, ?, ?)",
+                (business_id, user_id, "owner", now),
+            )
+            cur.execute(
+                "INSERT INTO business_settings (business_id, company_name, business_type, plan, visual_preference, demo_loaded, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                (business_id, "Empresa demo", "Salão de beleza", "Sem assinatura", "Graphite Premium", 0, now, now),
+            )
 
     conn.commit()
     conn.close()
@@ -786,9 +788,9 @@ def create_app():
             "object-src 'none'; "
             "frame-ancestors 'self'; "
             "script-src 'self' 'unsafe-inline' https://js.stripe.com; "
-            "style-src 'self' 'unsafe-inline'; "
+            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
             "img-src 'self' data: blob: https:; "
-            "font-src 'self' data: https:; "
+            "font-src 'self' data: https://fonts.gstatic.com; "
             "connect-src 'self' https://api.stripe.com https://*.stripe.com; "
             "frame-src 'self' https://js.stripe.com https://checkout.stripe.com https://hooks.stripe.com; "
             "form-action 'self' https://checkout.stripe.com"
@@ -855,6 +857,7 @@ def create_app():
             "brand_name": BRAND_NAME,
             "brand_tagline": BRAND_TAGLINE,
             "today_iso": datetime.today().date().isoformat(),
+            "demo_login_enabled": os.environ.get("ENABLE_DEMO_ACCOUNT", "0") == "1",
         }
 
     def fetch_transactions():
@@ -1210,7 +1213,7 @@ def create_app():
             {"label": "Novo produto", "url": "#novo-produto", "class": "ghost"},
         ]
         if not transactions and not items:
-            actions = [{"label": "Ver demonstração", "url": url_for("load_demo_data"), "class": "gold"}]
+            actions = [{"label": "Ver demonstração", "url": url_for("load_demo_data"), "class": "gold", "method": "post"}]
         return {
             "transactions": transactions,
             "items": items,
@@ -1547,22 +1550,27 @@ Sitemap: {public_site_url()}/sitemap.xml
 
     @app.route("/healthz")
     def healthz():
-        conn = get_db_connection(db_path)
-        try:
-            users_count = conn.execute("SELECT COUNT(*) AS total FROM users").fetchone()["total"]
-            subscriptions_count = conn.execute("SELECT COUNT(*) AS total FROM subscriptions").fetchone()["total"]
-        finally:
-            conn.close()
-        return jsonify({
+        detailed_allowed = (not is_production_env()) or (os.getenv("HEALTH_TOKEN") and request.args.get("token") == os.getenv("HEALTH_TOKEN"))
+        payload = {
             "ok": True,
             "database": "postgres" if is_postgres_dsn(db_path) else "sqlite",
-            "users_count": users_count,
-            "subscriptions_count": subscriptions_count,
-            "stripe_configured": bool(os.getenv("STRIPE_SECRET_KEY")),
             "database_url_present": bool(os.getenv("DATABASE_URL")),
-            "app_env": os.getenv("APP_ENV", "development"),
-            "app_url": get_app_url(),
-        })
+        }
+        if detailed_allowed:
+            conn = get_db_connection(db_path)
+            try:
+                users_count = conn.execute("SELECT COUNT(*) AS total FROM users").fetchone()["total"]
+                subscriptions_count = conn.execute("SELECT COUNT(*) AS total FROM subscriptions").fetchone()["total"]
+            finally:
+                conn.close()
+            payload.update({
+                "users_count": users_count,
+                "subscriptions_count": subscriptions_count,
+                "stripe_configured": bool(os.getenv("STRIPE_SECRET_KEY")),
+                "app_env": os.getenv("APP_ENV", "development"),
+                "app_url": get_app_url(),
+            })
+        return jsonify(payload)
 
     @app.route("/login", methods=["GET", "POST"])
     def login():
@@ -1614,8 +1622,8 @@ Sitemap: {public_site_url()}/sitemap.xml
             if not re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", email):
                 flash("Informe um email válido.", "error")
                 return render_template("cadastro.html", title="Criar conta | Valora Finance", business_types=business_types, form=request.form, selected_plan=selected_plan)
-            if len(password) < 6:
-                flash("A senha precisa ter pelo menos 6 caracteres.", "error")
+            if len(password) < 8:
+                flash("A senha precisa ter pelo menos 8 caracteres.", "error")
                 return render_template("cadastro.html", title="Criar conta | Valora Finance", business_types=business_types, form=request.form, selected_plan=selected_plan)
             conn = get_db_connection(db_path)
             exists = conn.execute("SELECT id FROM users WHERE email = ?", (email,)).fetchone()
@@ -1738,7 +1746,7 @@ Sitemap: {public_site_url()}/sitemap.xml
             flash(f"Não foi possível confirmar o checkout: {exc}", "error")
             return redirect(url_for("precos"))
 
-    @app.route("/billing/portal", methods=["POST", "GET"])
+    @app.route("/billing/portal", methods=["POST"])
     def billing_portal():
         subscription = get_subscription_for_business()
         if not subscription or not subscription["stripe_customer_id"]:
@@ -1868,7 +1876,7 @@ Sitemap: {public_site_url()}/sitemap.xml
         ]
         if ctx["no_data"]:
             dashboard_actions = [
-                {"label": "Ver demonstração", "url": url_for("load_demo_data"), "class": "gold"},
+                {"label": "Ver demonstração", "url": url_for("load_demo_data"), "class": "gold", "method": "post"},
                 {"label": "Nova movimentação", "url": "#nova-movimentacao", "class": "ghost"},
             ]
         ctx.update({
@@ -1922,7 +1930,7 @@ Sitemap: {public_site_url()}/sitemap.xml
             ],
         })
         if not ctx["transactions"] and not ctx["items"]:
-            ctx["page_actions"].append({"label": "Ver demonstração", "url": url_for("load_demo_data"), "class": "gold"})
+            ctx["page_actions"].append({"label": "Ver demonstração", "url": url_for("load_demo_data"), "class": "gold", "method": "post"})
         return render_template("finance.html", **ctx)
 
     @app.route("/estoque", methods=["GET", "POST"])
@@ -2349,7 +2357,7 @@ Sitemap: {public_site_url()}/sitemap.xml
         })
         return render_template("settings.html", **ctx)
 
-    @app.route("/load_demo_data")
+    @app.route("/load_demo_data", methods=["POST"])
     def load_demo_data():
         seed_demo_data()
         return redirect(url_for("dashboard"))

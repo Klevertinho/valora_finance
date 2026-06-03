@@ -19,5 +19,5 @@
   <a href="{{ url_for('recuperar_senha') }}">Esqueci minha senha</a>
   <a href="{{ url_for('cadastro', plan=selected_plan) if selected_plan else url_for('cadastro') }}">Criar conta</a>
 </div>
-<div class="demo-login-note">Conta demo local: <b>demo@valora.local</b> / <b>demo1234</b></div>
+{% if demo_login_enabled %}<div class="demo-login-note">Conta demo local: <b>demo@valora.local</b> / <b>demo1234</b></div>{% endif %}
 {% endblock %}

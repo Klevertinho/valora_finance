@@ -69,8 +69,8 @@ gunicorn 'app:create_app()' --bind 0.0.0.0:$PORT
 No Stripe, crie:
 
 ### Produto 1
-- Nome: Valora Finance Inicial
-- Preço: R$ 39/mês
+- Nome: Valora Finance Profissional
+- Preço: R$ 69/mês
 - Tipo: recorrente mensal
 
 ### Produto 2
@@ -102,7 +102,7 @@ Copie o signing secret `whsec_...` para `STRIPE_WEBHOOK_SECRET`.
 
 1. Entre em `/cadastro` e crie uma conta.
 2. Acesse `/precos`.
-3. Clique em Inicial ou Profissional.
+3. Clique em Profissional.
 4. Confirme que abre Stripe Checkout.
 5. Use cartão teste do Stripe.
 6. Após pagar, deve voltar para `/dashboard?checkout=success`.
