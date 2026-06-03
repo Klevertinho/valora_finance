@@ -12,15 +12,15 @@
     <aside class="sidebar">
       <a class="brand" href="{{ url_for('dashboard') }}" aria-label="Valora Finance">
         <span class="brand-logo"><img src="{{ url_for('static', filename='valora-logo-gold.png') }}" alt="Logo Valora Finance" /></span>
-        <span class="brand-copy"><strong>Valora Finance</strong><small>Gestão inteligente</small></span>
+        <span class="brand-copy"><strong>Valora Finance</strong><small>Copiloto do dono</small></span>
       </a>
 
       <nav class="sidebar-nav" aria-label="Navegação principal">
-        <a href="{{ url_for('dashboard') }}" class="nav-link {% if request.endpoint == 'dashboard' %}active{% endif %}"><span class="icon i-overview"></span>Visão geral</a>
-        <a href="{{ url_for('financas') }}" class="nav-link {% if request.endpoint == 'financas' %}active{% endif %}"><span class="icon i-finance"></span>Financeiro</a>
-        <a href="{{ url_for('estoque') }}" class="nav-link {% if request.endpoint == 'estoque' %}active{% endif %}"><span class="icon i-stock"></span>Estoque</a>
+        <a href="{{ url_for('dashboard') }}" class="nav-link {% if request.endpoint == 'dashboard' %}active{% endif %}"><span class="icon i-overview"></span>Resumo do Dono</a>
+        <a href="{{ url_for('financas') }}" class="nav-link {% if request.endpoint == 'financas' %}active{% endif %}"><span class="icon i-finance"></span>Radar de Vazamento</a>
+        <a href="{{ url_for('estoque') }}" class="nav-link {% if request.endpoint == 'estoque' %}active{% endif %}"><span class="icon i-stock"></span>Radar de Estoque</a>
         <a href="{{ url_for('vendas') }}" class="nav-link {% if request.endpoint == 'vendas' %}active{% endif %}"><span class="icon i-sales"></span>Vendas</a>
-        <a href="{{ url_for('relatorios') }}" class="nav-link {% if request.endpoint == 'relatorios' %}active{% endif %}"><span class="icon i-report"></span>Relatórios</a>
+        <a href="{{ url_for('relatorios') }}" class="nav-link {% if request.endpoint == 'relatorios' %}active{% endif %}"><span class="icon i-report"></span>Fechamentos</a>
         <a href="{{ url_for('configuracoes') }}" class="nav-link {% if request.endpoint == 'configuracoes' %}active{% endif %}"><span class="icon i-settings"></span>Configurações</a>
       </nav>
 
@@ -73,7 +73,7 @@
   <div id="nova-movimentacao" class="modal-shell" aria-hidden="true">
     <a class="modal-backdrop" href="#"></a>
     <div class="modal-card drawer-card">
-      <div class="modal-head"><div><span class="eyebrow">Caixa</span><h2>Nova movimentação</h2></div><a class="modal-close" href="#">×</a></div>
+      <div class="modal-head"><div><span class="eyebrow">Radar de Vazamento</span><h2>Nova movimentação</h2></div><a class="modal-close" href="#">×</a></div>
       <form method="post" action="{{ url_for('financas') }}" class="modal-form">
         
         {{ csrf_field()|safe }}<label>Tipo<select name="category" required><option value="receita">Entrada</option><option value="despesa">Saída</option></select></label>
@@ -89,7 +89,7 @@
   <div id="novo-produto" class="modal-shell" aria-hidden="true">
     <a class="modal-backdrop" href="#"></a>
     <div class="modal-card drawer-card">
-      <div class="modal-head"><div><span class="eyebrow">Estoque</span><h2>Novo produto</h2></div><a class="modal-close" href="#">×</a></div>
+      <div class="modal-head"><div><span class="eyebrow">Radar de Estoque</span><h2>Novo produto</h2></div><a class="modal-close" href="#">×</a></div>
       <form method="post" action="{{ url_for('estoque') }}" class="modal-form">
         
         {{ csrf_field()|safe }}<input type="hidden" name="action" value="add" />

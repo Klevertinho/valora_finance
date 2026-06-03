@@ -8,7 +8,7 @@
   "applicationCategory": "BusinessApplication",
   "operatingSystem": "Web",
   "url": "{{ site_url }}/",
-  "description": "Sistema financeiro com IA para controle de caixa, vendas, estoque e fechamento diário em pequenos negócios.",
+  "description": "Copiloto financeiro com IA para pequenos negócios: caixa, estoque, vendas, fechamento inteligente e prioridades do dia.",
   "brand": {"@type": "Brand", "name": "Valora Finance"},
   "offers": [{"@type": "Offer", "name": "Valora Finance Profissional", "price": "69.00", "priceCurrency": "BRL", "availability": "https://schema.org/InStock"}]
 }
@@ -18,125 +18,123 @@
   "@context": "https://schema.org",
   "@type": "FAQPage",
   "mainEntity": [
-    {"@type":"Question","name":"Preciso entender de finanças para usar?","acceptedAnswer":{"@type":"Answer","text":"Não. A Valora Finance mostra saldo, despesas, estoque e prioridades em linguagem simples."}},
+    {"@type":"Question","name":"O que diferencia a Valora de um sistema comum?","acceptedAnswer":{"@type":"Answer","text":"A Valora não apenas guarda lançamentos. Ela transforma caixa, vendas e estoque em prioridades simples para o dono agir melhor."}},
+    {"@type":"Question","name":"A IA toma decisões por mim?","acceptedAnswer":{"@type":"Answer","text":"Não. A IA aponta riscos, vazamentos e prioridades. A decisão continua com o dono do negócio."}},
     {"@type":"Question","name":"Qual é o preço?","acceptedAnswer":{"@type":"Answer","text":"O plano único Profissional custa R$69 por mês, sem fidelidade."}},
-    {"@type":"Question","name":"Tem inteligência artificial?","acceptedAnswer":{"@type":"Answer","text":"Sim. A Valora destaca despesas altas, estoque crítico e ações prioritárias."}},
-    {"@type":"Question","name":"Posso cancelar quando quiser?","acceptedAnswer":{"@type":"Answer","text":"Sim. A assinatura é mensal e pode ser cancelada pelo portal de assinatura."}}
+    {"@type":"Question","name":"Posso cancelar quando quiser?","acceptedAnswer":{"@type":"Answer","text":"Sim. A assinatura é mensal e sem fidelidade."}}
   ]
 }
 </script>
 {% endblock %}
 {% block content %}
-<main class="lovable-page gso-page">
-  <section class="lovable-hero gso-hero">
-    <div class="lovable-hero-glow lovable-hero-glow-a" aria-hidden="true"></div>
-    <div class="lovable-container lovable-hero-grid">
-      <div class="lovable-hero-copy" data-lv-reveal>
-        <span class="lovable-pill">Sistema financeiro com IA para pequenos negócios</span>
-        <h1>Saiba quanto entrou, saiu e sobrou. Sem planilha.</h1>
-        <p>Caixa, vendas, estoque, fechamento e insights em um painel simples para decidir o próximo passo do seu negócio.</p>
-        <div class="gso-proof-row" aria-label="Principais benefícios">
-          <span>Saldo claro</span><span>Estoque crítico</span><span>IA prática</span>
+<main class="valora-difference-page">
+  <section class="vd-hero" data-vd-reveal>
+    <div class="lovable-container vd-hero-grid">
+      <div class="vd-copy">
+        <span class="vd-pill">Copiloto financeiro com IA para pequenos negócios</span>
+        <h1>Todo dia, saiba o que sobrou e onde agir primeiro.</h1>
+        <p>A Valora transforma caixa, vendas e estoque em uma leitura simples para o dono: entrou, saiu, sobrou, risco e próxima ação.</p>
+        <div class="vd-actions">
+          <a class="lovable-btn lovable-btn-primary lovable-btn-lg" href="{{ url_for('assinar_plano', plan='profissional') }}">Assinar agora</a>
+          <a class="lovable-btn lovable-btn-ghost lovable-btn-lg" href="#diferenciais">Ver diferenciais</a>
         </div>
-        <div class="lovable-hero-actions">
-          <a class="lovable-btn lovable-btn-primary lovable-btn-lg" href="{{ url_for('assinar_plano', plan='profissional') }}">Assinar por R$69/mês</a>
-          <a class="lovable-link" href="#precos">Ver oferta</a>
-        </div>
-        <small>Sem fidelidade · Cancele quando quiser · Pagamento seguro</small>
+        <small>R$69/mês · Sem fidelidade · Feito para operar sem planilha</small>
       </div>
 
-      <aside class="lovable-dashboard gso-dashboard" data-lv-reveal role="img" aria-label="Painel Valora Finance com saldo, estoque crítico e insight de IA">
-        <div class="lovable-browser">Valora Finance</div>
-        <div class="gso-mock-grid">
-          <article class="gso-balance"><span>Saldo do mês</span><strong>R$ 4.580</strong><small>positivo, mas com despesas em atenção</small></article>
-          <article><span>Entrou</span><strong>R$ 13.280</strong></article>
-          <article><span>Saiu</span><strong>R$ 8.700</strong></article>
-          <article><span>Críticos</span><strong>4 itens</strong></article>
-          <article class="gso-bars"><span>Fluxo</span><div><i></i><i></i><i></i><i></i><i></i></div></article>
-          <article class="gso-insight"><span>Insight da IA</span><strong>Repor 4 itens antes de comprar mais estoque.</strong></article>
+      <aside class="vd-product" aria-label="Resumo visual da Valora Finance">
+        <div class="vd-product-top"><strong>Resumo do Dono</strong><span>Copiloto ativo</span></div>
+        <div class="vd-hero-balance"><span>Sobrou no mês</span><strong>R$ 4.580</strong><small>positivo, mas com atenção nas despesas</small></div>
+        <div class="vd-mini-grid">
+          <div><span>Entrou</span><b>R$ 13.280</b></div>
+          <div><span>Saiu</span><b>R$ 8.700</b></div>
+          <div><span>Estoque em risco</span><b>4 itens</b></div>
         </div>
+        <div class="vd-action-card"><span>Próxima ação</span><strong>Repor itens de alto giro antes de comprar estoque novo.</strong></div>
       </aside>
     </div>
   </section>
 
-  <section id="recursos" class="lovable-section gso-quick" data-lv-reveal>
-    <div class="lovable-container gso-quick-grid">
-      <article><b>01</b><h3>Feche o dia</h3><p>Veja entradas, saídas e saldo.</p></article>
-      <article><b>02</b><h3>Evite ruptura</h3><p>Produtos críticos aparecem primeiro.</p></article>
-      <article><b>03</b><h3>Decida com IA</h3><p>Receba prioridades, não relatórios gigantes.</p></article>
+  <section id="diferenciais" class="vd-section vd-signature" data-vd-reveal>
+    <div class="lovable-container">
+      <div class="vd-section-head">
+        <span class="lovable-kicker">Diferencial competitivo</span>
+        <h2>Não é só controle. É direção.</h2>
+        <p>A maioria dos sistemas guarda dados. A Valora mostra o que merece sua atenção hoje.</p>
+      </div>
+      <div class="vd-signature-grid">
+        <article><b>01</b><h3>Resumo do Dono</h3><p>Entrou, saiu, sobrou e o que exige atenção.</p></article>
+        <article><b>02</b><h3>Copiloto Valora</h3><p>IA apontando riscos e prioridades em linguagem simples.</p></article>
+        <article><b>03</b><h3>Radar de Estoque</h3><p>Mostra o que comprar agora, observar ou manter.</p></article>
+        <article><b>04</b><h3>Radar de Vazamento</h3><p>Encontra onde o dinheiro está escapando.</p></article>
+      </div>
     </div>
   </section>
 
-  <section id="como-funciona" class="lovable-section gso-value" data-lv-reveal>
-    <div class="lovable-container lovable-split">
+  <section id="recursos" class="vd-section vd-mechanism" data-vd-reveal>
+    <div class="lovable-container vd-mechanism-grid">
       <div>
-        <span class="lovable-kicker">Oferta simples</span>
-        <h2>Menos que uma venda perdida. Mais controle todos os dias.</h2>
+        <span class="lovable-kicker">Método Valora</span>
+        <h2>O sistema fecha o dia com você.</h2>
+        <p>Registre o básico. A Valora organiza a operação e devolve uma leitura objetiva para decidir o próximo passo.</p>
       </div>
-      <div class="gso-value-stack">
-        <div><strong>Financeiro</strong><span>Caixa, vendas, despesas e saldo.</span></div>
-        <div><strong>Estoque</strong><span>Reposição, margem e itens críticos.</span></div>
-        <div><strong>IA operacional</strong><span>Alertas e recomendações simples.</span></div>
-        <div><strong>Fechamentos</strong><span>Relatórios diário e mensal com PDF.</span></div>
+      <div class="vd-flow">
+        <div><span>1</span><strong>Registrar</strong><small>Vendas, despesas e produtos.</small></div>
+        <div><span>2</span><strong>Ler</strong><small>Saldo, estoque e vazamentos.</small></div>
+        <div><span>3</span><strong>Agir</strong><small>Prioridade clara para amanhã.</small></div>
       </div>
     </div>
   </section>
 
-  <section id="precos" class="lovable-section lovable-pricing gso-offer" data-lv-reveal>
-    <div class="lovable-container lovable-section-head">
-      <span class="lovable-kicker">Plano único</span>
-      <h2>Valora Finance Profissional</h2>
-      <p>Tudo liberado. Sem plano capado. Sem pegadinha.</p>
-    </div>
-    <div class="lovable-container gso-offer-card">
+  <section id="precos" class="vd-section vd-offer" data-vd-reveal>
+    <div class="lovable-container vd-offer-card">
       <div>
         <span class="gso-badge">Oferta de lançamento</span>
-        <h3>Controle financeiro + estoque + IA</h3>
-        <p>Para o dono que quer parar de administrar no escuro.</p>
-        <ul>
-          <li>Dashboard completo</li>
-          <li>Financeiro, vendas e estoque</li>
-          <li>Insights de IA e alertas</li>
-          <li>Fechamento diário e mensal</li>
-          <li>PDF com a marca da empresa</li>
-        </ul>
+        <h2>Por menos que uma venda perdida no mês.</h2>
+        <p>Se uma decisão errada de estoque, gasto ou caixa custa mais que R$69, a Valora já se paga.</p>
+        <div class="vd-offer-list">
+          <span>Resumo do Dono</span>
+          <span>Copiloto Valora</span>
+          <span>Radar de Estoque</span>
+          <span>Radar de Vazamento</span>
+          <span>Fechamento inteligente</span>
+          <span>PDF com sua marca</span>
+        </div>
       </div>
-      <div class="gso-price-box">
-        <small>Plano único</small>
+      <aside class="gso-price-box vd-price-box">
+        <small>Valora Profissional</small>
         <strong>R$ 69<span>/mês</span></strong>
         <a class="lovable-btn lovable-btn-primary lovable-btn-lg" href="{{ url_for('assinar_plano', plan='profissional') }}">Assinar agora</a>
         <em>Sem fidelidade · Cancele quando quiser</em>
+      </aside>
+    </div>
+  </section>
+
+  <section id="faq" class="vd-section vd-faq" data-vd-reveal>
+    <div class="lovable-container vd-faq-grid">
+      <div><span class="lovable-kicker">Dúvidas</span><h2>Direto ao ponto.</h2></div>
+      <div class="lovable-faq-list compact-faq">
+        <details open><summary>É só mais um financeiro?</summary><p>Não. O foco é transformar dados simples em prioridades de ação para o dono.</p></details>
+        <details><summary>Preciso entender de gestão?</summary><p>Não. A tela mostra o básico: dinheiro, estoque, vazamento e próxima ação.</p></details>
+        <details><summary>Tem fidelidade?</summary><p>Não. A assinatura é mensal e pode ser cancelada quando quiser.</p></details>
       </div>
     </div>
   </section>
 
-  <section id="faq" class="lovable-section lovable-faq" data-lv-reveal>
-    <div class="lovable-container lovable-section-head">
-      <span class="lovable-kicker">Dúvidas</span>
-      <h2>Direto ao ponto.</h2>
-    </div>
-    <div class="lovable-container lovable-faq-list compact-faq">
-      <details open><summary>Tem versão grátis?</summary><p>Não. A Valora é um sistema profissional por R$69/mês, com tudo liberado.</p></details>
-      <details><summary>Posso cancelar?</summary><p>Sim. A assinatura é mensal e sem fidelidade.</p></details>
-      <details><summary>Serve para meu negócio?</summary><p>Serve para MEIs, lojas, salões, barbearias, food service e pequenos serviços.</p></details>
-    </div>
-  </section>
-
-  <section class="lovable-final" data-lv-reveal>
+  <section class="lovable-final vd-final" data-vd-reveal>
     <div class="lovable-container">
-      <h2>Se uma decisão ruim custa mais que R$69, a conta fecha.</h2>
-      <p>Assine, organize o mês e veja onde agir.</p>
+      <h2>Pare de vender no escuro.</h2>
+      <p>Assine e transforme a rotina do negócio em decisões simples.</p>
       <a class="lovable-btn lovable-btn-primary lovable-btn-lg" href="{{ url_for('assinar_plano', plan='profissional') }}">Assinar Valora Finance</a>
     </div>
   </section>
 </main>
 <script>
   document.addEventListener('DOMContentLoaded', function () {
-    const items = document.querySelectorAll('[data-lv-reveal]');
+    const items = document.querySelectorAll('[data-vd-reveal]');
     if (!('IntersectionObserver' in window)) { items.forEach((el) => el.classList.add('is-visible')); return; }
     const observer = new IntersectionObserver((entries) => {
       entries.forEach((entry) => { if (entry.isIntersecting) { entry.target.classList.add('is-visible'); observer.unobserve(entry.target); } });
-    }, { threshold: 0.1, rootMargin: '0px 0px -24px 0px' });
+    }, { threshold: 0.12, rootMargin: '0px 0px -30px 0px' });
     items.forEach((el) => observer.observe(el));
   });
 </script>

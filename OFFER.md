@@ -1,28 +1,32 @@
-# Oferta comercial — Valora Finance
+# Oferta Valora Finance V15
 
-## Estratégia
-
-Plano único para eliminar dúvida e fricção.
-
-## Oferta
-
-Valora Finance Profissional — R$69/mês
-
-Inclui:
-- Controle financeiro
-- Controle de vendas
-- Controle de estoque
-- Alertas de produtos críticos
-- Insights de IA
-- Fechamento diário
-- Fechamento mensal
-- PDF personalizado
-- Portal de assinatura
+## Oferta principal
+Valora Finance Profissional — R$69/mês.
 
 ## Promessa
+Todo dia, saiba o que sobrou e onde agir primeiro.
 
-Por menos que uma venda perdida, o pequeno empresário passa a saber quanto entrou, quanto saiu, quanto sobrou e onde agir.
+## Mecanismo único
+A Valora transforma caixa, vendas e estoque em uma leitura de dono:
+- entrou;
+- saiu;
+- sobrou;
+- estoque em risco;
+- vazamentos;
+- próxima ação.
 
-## CTA
+## Diferenciais nomeados
+- Resumo do Dono
+- Copiloto Valora
+- Radar de Estoque
+- Radar de Vazamento
+- Fechamento Inteligente
 
-Assinar agora
+## Justificativa de preço
+Por menos que uma venda perdida no mês, o cliente recebe uma rotina de decisão para parar de administrar no escuro.
+
+## Frases de venda
+- Pare de vender no escuro.
+- Não é só controle. É direção.
+- O sistema que fecha o dia com você.
+- Se uma decisão errada custa mais que R$69, a conta fecha.

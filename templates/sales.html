@@ -21,7 +21,7 @@
 <section class="single-column-stack">
   <article class="card chart-panel clean-panel sales-chart-panel">
     <div class="card-head compact-head">
-      <div><h3>Vendas por dia</h3><p>Receita comercial dos últimos 7 dias</p></div>
+      <div><h3>Ritmo de vendas</h3><p>O que entrou nos últimos 7 dias</p></div>
     </div>
     <div class="chart-with-axis">
       <div class="y-axis"><span>R$ 5k</span><span>R$ 2,5k</span><span>R$ 0</span></div>
@@ -39,7 +39,7 @@
   </article>
 
   <article class="card table-card clean-panel">
-    <div class="card-head compact-head"><div><h3>Vendas recentes</h3><p>Histórico comercial</p></div></div>
+    <div class="card-head compact-head"><div><h3>Vendas que alimentam o caixa</h3><p>Histórico comercial</p></div></div>
     {% if sale_transactions %}
     <div class="table-wrap"><table class="data-table sales-table"><thead><tr><th>Descrição</th><th>Categoria</th><th>Data</th><th class="table-money">Valor</th></tr></thead><tbody>
     {% for tx in sale_transactions[:8] %}

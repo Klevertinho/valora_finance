@@ -3,9 +3,9 @@
 {% if no_data %}
 <section class="empty-cockpit card clean-empty">
   <div class="empty-cockpit-copy">
-    <span class="eyebrow">Demo disponível</span>
-    <h2>Veja o sistema com dados prontos.</h2>
-    <p>Carregue uma base de demonstração para entender a proposta do produto antes de começar os cadastros.</p>
+    <span class="eyebrow">Resumo do Dono</span>
+    <h2>Veja a Valora tomando forma.</h2>
+    <p>Carregue uma demonstração para visualizar caixa, estoque e prioridades antes de começar seus próprios registros.</p>
     <div class="empty-actions">
       <form class="inline-demo-form" method="post" action="{{ url_for('load_demo_data') }}">{{ csrf_field()|safe }}<button class="btn btn-gold" type="submit">Ver demonstração</button></form>
       <a class="btn btn-ghost" href="#nova-movimentacao">Começar do zero</a>
@@ -23,7 +23,7 @@
   <article class="health-panel card status-{{ health.class }} hero-health">
     <div class="health-header">
       <div>
-        <span class="eyebrow">Saúde financeira</span>
+        <span class="eyebrow">Resumo do Dono</span>
         <h2>{{ health.label }}</h2>
         <p class="health-copy">{{ health.message }}</p>
       </div>
@@ -33,16 +33,16 @@
     <div class="health-main clean-health-main">
       <div>
         <strong class="money-value">{{ month_net|currency }}</strong>
-        <small>Saldo líquido do mês</small>
+        <small>O que sobrou no mês</small>
       </div>
       <div class="gauge" style="--score: {{ score }}"><span>{{ score }}</span></div>
     </div>
 
     <div class="health-stats slim-health-stats">
-      <span>Despesas: <b>{{ '%.0f' % expense_ratio }}%</b></span>
+      <span>Vazamento: <b>{{ '%.0f' % expense_ratio }}%</b></span>
       <span>Tendência: <b>{{ metric_cards[0].trend }}</b></span>
-      <span>Críticos: <b>{{ stock.critical_count }}</b></span>
-      <a href="{{ url_for('relatorios') }}">Ver relatório</a>
+      <span>Estoque em risco: <b>{{ stock.critical_count }}</b></span>
+      <a href="{{ url_for('relatorios') }}">Ver fechamento</a>
     </div>
   </article>
 
@@ -61,8 +61,8 @@
   <article class="card chart-panel clean-flow">
     <div class="card-head">
       <div>
-        <h3>Fluxo financeiro</h3>
-        <p>Receitas e despesas dos últimos 7 dias.</p>
+        <h3>Radar de Vazamento</h3>
+        <p>Entradas e saídas para enxergar onde o dinheiro escapa.</p>
       </div>
       <span class="chart-pill">7 dias</span>
     </div>
@@ -84,7 +84,7 @@
   </article>
 
   <aside class="card priority-panel clean-priority-panel">
-    <div class="card-head"><div><span class="eyebrow">Leitura rápida</span><h3>Prioridades</h3></div></div>
+    <div class="card-head"><div><span class="eyebrow">Copiloto Valora</span><h3>Prioridades de hoje</h3></div></div>
     <div class="priority-stack compact-priority-stack">
       {% for insight in insights[:2] %}
       <div class="copilot-item {{ insight.class }}"><span></span><div><strong>{{ insight.title }}</strong><small>{{ insight.text }}</small></div></div>
@@ -92,9 +92,9 @@
     </div>
 
     <div class="priority-block compact-summary-block">
-      <div class="mini-head"><strong>Estoque</strong><a href="{{ url_for('estoque') }}">Abrir</a></div>
+      <div class="mini-head"><strong>Radar de Estoque</strong><a href="{{ url_for('estoque') }}">Abrir</a></div>
       <div class="mini-summary-list">
-        <div><span>Itens críticos</span><b>{{ stock.critical_count }}</b></div>
+        <div><span>Comprar agora</span><b>{{ stock.critical_count }}</b></div>
         <div><span>Total em estoque</span><b>{{ stock.units }}</b></div>
       </div>
     </div>
@@ -103,7 +103,7 @@
 
 <section class="compact-details-grid clean-two">
   <article class="card recent-card compact-card">
-    <div class="card-head"><h3>Atividade recente</h3><a href="{{ url_for('financas') }}">Ver tudo</a></div>
+    <div class="card-head"><h3>Movimentos recentes</h3><a href="{{ url_for('financas') }}">Ver tudo</a></div>
     {% if recent_transactions %}
     <div class="activity-list compact-list">
       {% for tx in recent_transactions[:4] %}
@@ -120,7 +120,7 @@
   </article>
 
   <article class="card compact-card today-card">
-    <div class="card-head"><h3>Resumo do dia</h3></div>
+    <div class="card-head"><h3>Fechamento de hoje</h3></div>
     <div class="mini-stats daily-mini-stats">
       <div><span>Entradas</span><b class="money-value">{{ today_summary.revenue|currency }}</b></div>
       <div><span>Saídas</span><b class="money-value">{{ today_summary.expenses|currency }}</b></div>

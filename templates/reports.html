@@ -12,7 +12,7 @@
     <small>Dia atual</small>
   </article>
   <article class="summary-card card tone-warning">
-    <div class="summary-top"><span class="metric-symbol">✓</span><p>Fechamentos</p></div>
+    <div class="summary-top"><span class="metric-symbol">✓</span><p>Fechamentos inteligentes</p></div>
     <strong>{{ closings|length + month_closings|length }}</strong>
     <small>Dia e mês</small>
   </article>
@@ -21,7 +21,7 @@
 <section class="single-column-stack">
   <article id="fechamento" class="card closing-card clean-panel clean-closing-card">
     <div class="card-head compact-head">
-      <div><h3>Fechamento do dia</h3><p>Resumo do desempenho de hoje</p></div>
+      <div><h3>Fechamento Inteligente do Dia</h3><p>O que entrou, saiu, sobrou e o que fazer amanhã.</p></div>
       <div class="report-actions">
         <form method="post" action="{{ url_for('close_day') }}">
         {{ csrf_field()|safe }}<button class="btn btn-primary" type="submit">Fechar dia</button></form>
@@ -38,7 +38,7 @@
 
   <article id="fechamento-mensal" class="card closing-card clean-panel monthly-closing-card">
     <div class="card-head compact-head">
-      <div><h3>Fechamento do mês</h3><p>Resumo executivo do mês atual com insights.</p></div>
+      <div><h3>Fechamento Inteligente do Mês</h3><p>Leitura executiva para decidir o próximo ciclo.</p></div>
       <div class="report-actions">
         <form method="post" action="{{ url_for('close_month') }}">
         {{ csrf_field()|safe }}<button class="btn btn-primary" type="submit">Fechar mês</button></form>
@@ -55,7 +55,7 @@
 
     <div class="monthly-insights-grid">
       <div class="monthly-insights-box">
-        <h4>O que aconteceu no mês</h4>
+        <h4>Leitura do Copiloto</h4>
         <ul>
           {% for insight in month_summary.insight_list[:4] %}
           <li>{{ insight }}</li>
@@ -63,7 +63,7 @@
         </ul>
       </div>
       <div class="monthly-insights-box">
-        <h4>Resumo operacional</h4>
+        <h4>Resumo do Dono</h4>
         <p><b>Vendas:</b> {{ month_summary.sales_count }}</p>
         <p><b>Maior gasto:</b> {{ month_summary.top_expense }}</p>
         <p><b>Produtos vendidos:</b> {{ month_summary.products_sold }}</p>
@@ -73,7 +73,7 @@
   </article>
 
   <article class="card table-card clean-panel">
-    <div class="card-head compact-head"><div><h3>Histórico de fechamentos diários</h3><p>Registros concluídos</p></div></div>
+    <div class="card-head compact-head"><div><h3>Histórico diário</h3><p>Fechamentos concluídos</p></div></div>
     {% if closings %}
     <div class="table-wrap"><table class="data-table reports-table"><thead><tr><th>Data</th><th class="table-money">Receitas</th><th class="table-money">Despesas</th><th class="table-money">Saldo</th><th>Críticos</th><th>Recomendação</th></tr></thead><tbody>
     {% for c in closings %}
@@ -93,7 +93,7 @@
   </article>
 
   <article class="card table-card clean-panel">
-    <div class="card-head compact-head"><div><h3>Histórico de fechamentos mensais</h3><p>Resumo dos meses encerrados</p></div></div>
+    <div class="card-head compact-head"><div><h3>Histórico mensal</h3><p>Decisões e resultados por ciclo</p></div></div>
     {% if month_closings %}
     <div class="table-wrap"><table class="data-table reports-table month-table"><thead><tr><th>Mês</th><th class="table-money">Receitas</th><th class="table-money">Despesas</th><th class="table-money">Saldo</th><th>Maior gasto</th><th>Insights</th></tr></thead><tbody>
     {% for c in month_closings %}

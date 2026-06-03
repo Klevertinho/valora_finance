@@ -12,16 +12,16 @@
     <small>Custo estimado</small>
   </article>
   <article class="summary-card card tone-warning">
-    <div class="summary-top"><span class="metric-symbol">!</span><p>Itens críticos</p></div>
+    <div class="summary-top"><span class="metric-symbol">!</span><p>Estoque em risco</p></div>
     <strong>{{ stock.critical_count }}</strong>
-    <small>Precisam de reposição</small>
+    <small>Comprar agora</small>
   </article>
 </section>
 
 <section class="page-grid inventory-grid">
   <div class="main-stack">
     <article class="card table-card clean-panel">
-      <div class="card-head compact-head"><div><h3>Produtos</h3><p>Visão operacional simplificada</p></div></div>
+      <div class="card-head compact-head"><div><h3>Radar de Estoque</h3><p>Comprar agora, observar ou manter</p></div></div>
       {% if items %}
       <div class="table-wrap">
         <table class="data-table inventory-table">
@@ -51,7 +51,7 @@
                 <small>Custo {{ item.cost_price|currency }}</small>
               </td>
               <td class="table-money {{ 'positive' if item.margin >= 45 else 'negative' if item.margin < 25 else '' }}">{{ '%.1f' % item.margin }}%</td>
-              <td><span class="badge {{ 'danger' if item.status == 'critico' else 'warning' if item.status == 'atencao' else 'success' }}">{{ 'Crítico' if item.status == 'critico' else 'Atenção' if item.status == 'atencao' else 'Saudável' }}</span></td>
+              <td><span class="badge {{ 'danger' if item.status == 'critico' else 'warning' if item.status == 'atencao' else 'success' }}">{{ 'Comprar agora' if item.status == 'critico' else 'Observar' if item.status == 'atencao' else 'OK' }}</span></td>
               <td class="actions-cell simpler-actions">
                 <form method="post" action="{{ url_for('estoque') }}">
                   
@@ -88,7 +88,7 @@
 
   <aside class="side-stack compact-side">
     <article class="card stock-attention clean-panel">
-      <div class="card-head compact-head"><div><h3>Reposição</h3><p>Somente o que merece atenção</p></div></div>
+      <div class="card-head compact-head"><div><h3>Comprar agora</h3><p>Itens que podem travar vendas</p></div></div>
       {% if stock.critical %}
       <div class="stock-list clean-stock-list">
         {% for item in stock.critical[:4] %}
@@ -97,7 +97,7 @@
             <strong>{{ item.name }}</strong>
             <small>{{ item.quantity }} un. · mín. {{ item.min_stock }}</small>
           </div>
-          <span class="status-badge status-{{ 'danger' if item.quantity == 0 else 'warning' }}">{{ 'Crítico' if item.quantity == 0 else 'Atenção' }}</span>
+          <span class="status-badge status-{{ 'danger' if item.quantity == 0 else 'warning' }}">{{ 'Comprar agora' if item.quantity == 0 else 'Observar' }}</span>
         </div>
         {% endfor %}
       </div>

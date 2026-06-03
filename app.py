@@ -1025,13 +1025,19 @@ def create_app():
         insights = []
         if revenue:
             ratio = round((expenses / revenue) * 100)
-            insights.append({"title": f"Despesas em {ratio}%", "text": "Sob controle" if ratio <= 55 else "Revisar despesas", "class": "success" if ratio < 65 else "warning"})
+            if ratio >= 65:
+                insights.append({"title": f"Radar de Vazamento: {ratio}%", "text": "Despesas altas; revise os maiores gastos antes de comprar mais.", "class": "warning"})
+            else:
+                insights.append({"title": "Radar de Vazamento: ok", "text": "Despesas sob controle para o mês atual.", "class": "success"})
         else:
-            insights.append({"title": "Sem receita", "text": "Registre vendas", "class": "warning"})
-        insights.append({"title": f"{stock['critical_count']} itens críticos", "text": "Repor estoque" if stock["critical_count"] else "Estoque ok", "class": "warning" if stock["critical_count"] else "success"})
-        insights.append({"title": "Saldo positivo" if net >= 0 else "Saldo negativo", "text": "Reserve capital de giro" if net >= 0 else "Revisar caixa", "class": "success" if net >= 0 else "danger"})
+            insights.append({"title": "Sem leitura do caixa", "text": "Registre vendas para o Copiloto calcular prioridades.", "class": "warning"})
+        if stock["critical_count"]:
+            insights.append({"title": f"Radar de Estoque: {stock['critical_count']} itens", "text": "Comprar agora para evitar perder venda.", "class": "warning"})
+        else:
+            insights.append({"title": "Radar de Estoque: saudável", "text": "Nenhum produto crítico no momento.", "class": "success"})
+        insights.append({"title": "Resumo do Dono", "text": "Reserve caixa" if net >= 0 else "Resultado negativo; reduza vazamentos hoje", "class": "success" if net >= 0 else "danger"})
         closings_today = any(tx["date"] == datetime.today().date().isoformat() for tx in transactions)
-        insights.append({"title": "Fechamento", "text": "Atualizado" if closings_today else "Pendente", "class": "primary" if closings_today else "warning"})
+        insights.append({"title": "Fechamento Inteligente", "text": "Dia encerrado" if closings_today else "Feche o dia para gerar a próxima ação", "class": "primary" if closings_today else "warning"})
         return insights
 
     def generate_actions(transactions, items):
@@ -1478,8 +1484,8 @@ def create_app():
     def landing():
         return render_template(
             "landing.html",
-            title="Valora Finance | Controle financeiro para pequenos negócios",
-            description="Sistema financeiro com IA para controlar caixa, vendas, estoque, despesas e fechamento diário em pequenos negócios.",
+            title="Valora Finance | Copiloto financeiro com IA para pequenos negócios",
+            description="Todo dia, saiba o que sobrou e onde agir primeiro. Caixa, vendas, estoque, IA e fechamentos para pequenos negócios.",
             canonical_url=public_site_url() + "/",
         )
 
@@ -1491,8 +1497,8 @@ def create_app():
             flash("A conta foi criada, mas o sistema só libera após escolher um plano.", "info")
         return render_template(
             "precos.html",
-            title="Preços | Valora Finance",
-            description="Conheça os planos da Valora Finance para controlar financeiro, vendas, estoque e fechamento diário em pequenos negócios.",
+            title="Plano Profissional | Valora Finance",
+            description="Assine a Valora Finance por R$69/mês: Resumo do Dono, Copiloto Valora, Radar de Estoque, Radar de Vazamento e Fechamentos Inteligentes.",
             canonical_url=public_site_url() + "/precos",
         )
 
@@ -1880,8 +1886,8 @@ Sitemap: {public_site_url()}/sitemap.xml
                 {"label": "Nova movimentação", "url": "#nova-movimentacao", "class": "ghost"},
             ]
         ctx.update({
-            "page_title": "Visão geral",
-            "page_subtitle": "Caixa, estoque e prioridades do dia.",
+            "page_title": "Resumo do Dono",
+            "page_subtitle": "O que sobrou, o que preocupa e onde agir primeiro.",
             "page_actions": dashboard_actions,
         })
         return render_template("dashboard.html", **ctx)
@@ -1919,8 +1925,8 @@ Sitemap: {public_site_url()}/sitemap.xml
         revenue, expenses, net = monthly_totals(transactions)
         cats = expenses_by_category(transactions)
         ctx.update({
-            "page_title": "Financeiro",
-            "page_subtitle": "Fluxo de caixa e movimentações.",
+            "page_title": "Radar de Vazamento",
+            "page_subtitle": "Veja onde o dinheiro entra, sai e escapa.",
             "revenue": revenue,
             "expenses": expenses,
             "net": net,
@@ -1992,8 +1998,8 @@ Sitemap: {public_site_url()}/sitemap.xml
             data["status"] = product_status(item)
             item_rows.append(data)
         ctx.update({
-            "page_title": "Estoque",
-            "page_subtitle": "Produtos, margem e reposição.",
+            "page_title": "Radar de Estoque",
+            "page_subtitle": "Comprar agora, observar ou manter.",
             "items": item_rows,
             "page_actions": [
                 {"label": "Novo produto", "url": "#novo-produto", "class": "primary"},
@@ -2013,7 +2019,7 @@ Sitemap: {public_site_url()}/sitemap.xml
         products_sold = len([tx for tx in sale_txs if "venda" in tx["description"].lower()])
         ctx.update({
             "page_title": "Vendas",
-            "page_subtitle": "Vendas, ticket médio e produtos vendidos.",
+            "page_subtitle": "O ritmo que alimenta o caixa.",
             "sale_transactions": sale_txs,
             "sales_total": sales_total,
             "ticket_average": ticket_average,
@@ -2037,8 +2043,8 @@ Sitemap: {public_site_url()}/sitemap.xml
                 product = tx["description"].replace("Venda de ", "")
                 products_sold[product] = products_sold.get(product, 0) + 1
         ctx.update({
-            "page_title": "Relatórios",
-            "page_subtitle": "Fechamentos e decisões do período.",
+            "page_title": "Fechamentos",
+            "page_subtitle": "O que aconteceu e qual decisão tomar no próximo ciclo.",
             "daily_summary": daily,
             "monthly_summary": monthly,
             "products_sold": products_sold,

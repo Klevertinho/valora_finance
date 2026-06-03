@@ -1,29 +1,28 @@
 {% extends 'public_layout.html' %}
 {% block content %}
-<main class="public-section pricing-page gso-pricing-page">
+<main class="public-section pricing-page vd-pricing-page">
   <div class="public-container">
-    <div class="section-title compact-title">
+    <div class="section-title compact-title vd-price-head">
       <span>Plano único</span>
-      <h1>Valora Finance Profissional</h1>
-      <p>Uma assinatura. Tudo liberado. Caixa, vendas, estoque, IA e fechamentos.</p>
+      <h1>O sistema que fecha o dia com você.</h1>
+      <p>Caixa, vendas, estoque, IA e fechamentos em uma assinatura simples.</p>
     </div>
 
-    <section class="gso-offer-card standalone-offer">
+    <section class="vd-offer-card standalone-offer vd-pricing-offer">
       <div>
-        <span class="gso-badge">Oferta de lançamento</span>
-        <h2>Controle seu negócio por menos que uma venda perdida.</h2>
-        <p>Você não paga por “mais um sistema”. Você compra clareza para parar de perder dinheiro no escuro.</p>
-        <ul>
-          <li>Dashboard financeiro completo</li>
-          <li>Controle de estoque e produtos críticos</li>
-          <li>Vendas, despesas e saldo líquido</li>
-          <li>Insights de IA com prioridades</li>
-          <li>Fechamento diário e mensal</li>
-          <li>PDF personalizado com sua marca</li>
-          <li>Portal para gerenciar a assinatura</li>
-        </ul>
+        <span class="gso-badge">Valora Profissional</span>
+        <h2>Todo dia, saiba o que sobrou e onde agir primeiro.</h2>
+        <p>Você não compra “mais uma tela”. Você compra uma rotina de decisão para parar de administrar no escuro.</p>
+        <div class="vd-offer-list pricing-list">
+          <span>Resumo do Dono</span>
+          <span>Copiloto Valora</span>
+          <span>Radar de Estoque</span>
+          <span>Radar de Vazamento</span>
+          <span>Fechamento inteligente</span>
+          <span>PDF com sua marca</span>
+        </div>
       </div>
-      <aside class="gso-price-box">
+      <aside class="gso-price-box vd-price-box">
         <small>Plano único</small>
         <strong>R$ 69<span>/mês</span></strong>
         <a class="btn btn-primary wide" href="{{ url_for('assinar_plano', plan='profissional') }}">Assinar agora</a>
